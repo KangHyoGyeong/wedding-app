@@ -40,7 +40,7 @@ const C = {
 };
 
 const CAT_COLORS = {
-  "스드메":"#7C3AED","예물·예단":"#DB2777",
+  "예식장":"#1E6FD9","스드메":"#7C3AED","예물·예단":"#DB2777",
   "본식":"#0891B2","뷰티":"#EC4899","청첩장":"#D97706",
   "신혼여행":"#059669","이사":"#6B7280","기타":"#9CA3AF"
 };
@@ -131,7 +131,7 @@ const INITIAL_TIMELINE = [
   {id:"tl2",phase:"1단계",label:"상견례 예약 및 진행",deadline:"2026-06-30",done:false},
   {id:"tl3",phase:"1단계",label:"총 예산 양가 협의 확정",deadline:"2026-05-31",done:false},
   {id:"tl4",phase:"1단계",label:"웨딩박람회 방문",deadline:"2026-06-30",done:false},
-  {id:"tl5",phase:"2단계",label:"로얄파크컨벤션 방문 상담",deadline:"2026-07-31",done:false},
+  {id:"tl5",phase:"2단계",label:"예식장 방문 상담",deadline:"2026-07-31",done:false},
   {id:"tl6",phase:"2단계",label:"예식장 최종 계약 및 계약금 납부",deadline:"2026-09-30",done:false},
   {id:"tl7",phase:"2단계",label:"스드메 패키지 계약",deadline:"2026-09-30",done:false},
   {id:"tl8",phase:"3단계",label:"예물 쇼핑",deadline:"2026-11-30",done:false},
@@ -198,7 +198,7 @@ function DdayCard({ weddingDate }) {
     <div style={{ ...S.cardLime, overflow:"visible" }}>
       <p style={{ fontSize:10,fontWeight:700,color:C.ink,opacity:.5,letterSpacing:C.ls,marginBottom:4 }}>결혼까지</p>
       <div style={{ fontSize:54,fontWeight:800,color:C.ink,lineHeight:1,letterSpacing:"-0.05em" }}>{diff.toLocaleString()}</div>
-      <p style={{ fontSize:11,color:C.ink,opacity:.55,marginTop:5,letterSpacing:C.ls }}>2027.07.10 · 로얄파크컨벤션</p>
+      <p style={{ fontSize:11,color:C.ink,opacity:.55,marginTop:5,letterSpacing:C.ls }}>2027년 7월 10일</p>
       <div style={{ background:"rgba(0,0,0,0.12)",borderRadius:"100px",height:3,marginTop:12,overflow:"hidden" }}>
         <div style={{ width:`${pct.toFixed(1)}%`,height:"100%",background:C.ink,borderRadius:"100px" }}/>
       </div>
@@ -361,12 +361,24 @@ function VenueCard({ item, groupId, onUpdate }) {
 }
 
 // ── 의논 탭 ───────────────────────────────────────────────────
-function DiscussionTab({ discussions, onUpdate }) {
+function DiscussionTab({ discussions, onUpdate, onAddItem, onDeleteItem }) {
   const [activeGroup, setActiveGroup] = useState(discussions[0].id);
   const [editingNote, setEditingNote] = useState(null);
   const [noteVal, setNoteVal] = useState("");
+  const [addModal, setAddModal] = useState(false);
+  const [newLabel, setNewLabel] = useState("");
+  const [newOpts, setNewOpts] = useState("");
   const group = discussions.find(g=>g.id===activeGroup);
   const segItems = discussions.map(g=>({ id:g.id, label:g.segLabel }));
+
+  const handleAddItem = () => {
+    const label = newLabel.trim();
+    if(!label) return;
+    const options = newOpts.split(",").map(s=>s.trim()).filter(Boolean);
+    const id = "custom_"+Date.now();
+    onAddItem(activeGroup, {id, label, options, decided:null, note:""});
+    setNewLabel(""); setNewOpts(""); setAddModal(false);
+  };
 
   return (
     <div>
@@ -377,10 +389,15 @@ function DiscussionTab({ discussions, onUpdate }) {
           ? <VenueCard key={item.id} item={item} groupId={group.id} onUpdate={onUpdate}/>
           : <div key={item.id} style={{ background:C.card,borderRadius:C.rlg,padding:"14px",border:`1px solid ${item.decided!==null?C.ink:C.border}`,transition:"border-color 0.2s" }}>
             <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:9 }}>
-              <p style={{ margin:0,fontSize:12,fontWeight:700,color:C.ink,letterSpacing:C.ls }}>{item.label}</p>
-              {item.decided!==null && (
-                <span style={{ background:C.lime,color:C.ink,fontSize:9,fontWeight:800,padding:"3px 8px",borderRadius:C.rxs,letterSpacing:C.ls }}>결정 완료</span>
-              )}
+              <p style={{ margin:0,fontSize:12,fontWeight:700,color:C.ink,letterSpacing:C.ls,flex:1,minWidth:0,paddingRight:6 }}>{item.label}</p>
+              <div style={{ display:"flex",alignItems:"center",gap:6,flexShrink:0 }}>
+                {item.decided!==null && (
+                  <span style={{ background:C.lime,color:C.ink,fontSize:9,fontWeight:800,padding:"3px 8px",borderRadius:C.rxs,letterSpacing:C.ls }}>결정 완료</span>
+                )}
+                {item.id.startsWith("custom_") && (
+                  <button onClick={()=>onDeleteItem(group.id,item.id)} style={{ background:"none",border:"none",fontSize:14,cursor:"pointer",color:"#ccc",lineHeight:1,padding:"0 2px" }}>✕</button>
+                )}
+              </div>
             </div>
             <div style={{ display:"flex",flexWrap:"wrap",gap:6 }}>
               {item.options.map(opt=>{
@@ -418,18 +435,63 @@ function DiscussionTab({ discussions, onUpdate }) {
           </div>
         ))}
       </div>
+
+      {/* 항목 추가 버튼 */}
+      <button onClick={()=>setAddModal(true)} style={{ width:"100%",marginTop:4,padding:"11px",borderRadius:C.rsm,border:`1.5px dashed rgba(0,0,0,0.15)`,background:"transparent",fontSize:12,fontWeight:700,color:C.ink,cursor:"pointer",fontFamily:C.font,letterSpacing:C.ls }}>
+        + 의논 항목 추가
+      </button>
+
+      {/* 추가 모달 */}
+      {addModal && (
+        <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:200,display:"flex",alignItems:"flex-end",justifyContent:"center" }}>
+          <div style={{ background:C.card,borderRadius:`${C.rxl} ${C.rxl} 0 0`,padding:"22px 18px 36px",width:"100%",maxWidth:480 }}>
+            <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16 }}>
+              <p style={{ margin:0,fontSize:15,fontWeight:800,color:C.ink,letterSpacing:C.ls }}>의논 항목 추가</p>
+              <button onClick={()=>setAddModal(false)} style={{ background:"none",border:"none",fontSize:18,cursor:"pointer",color:"#bbb" }}>✕</button>
+            </div>
+            <p style={{ fontSize:11,color:"#999",marginBottom:6,letterSpacing:C.ls }}>질문 / 항목명</p>
+            <input value={newLabel} onChange={e=>setNewLabel(e.target.value)} placeholder="예: 웨딩홀 선택 기준"
+              style={{ width:"100%",padding:"11px 13px",borderRadius:C.rsm,border:`1.5px solid rgba(0,0,0,0.14)`,fontSize:13,outline:"none",fontFamily:C.font,color:C.ink,background:C.card2,letterSpacing:C.ls,marginBottom:12,boxSizing:"border-box" }}/>
+            <p style={{ fontSize:11,color:"#999",marginBottom:6,letterSpacing:C.ls }}>선택지 (쉼표로 구분, 없으면 비워두세요)</p>
+            <input value={newOpts} onChange={e=>setNewOpts(e.target.value)} placeholder="예: A홀, B홀, 미정"
+              style={{ width:"100%",padding:"11px 13px",borderRadius:C.rsm,border:`1.5px solid rgba(0,0,0,0.14)`,fontSize:13,outline:"none",fontFamily:C.font,color:C.ink,background:C.card2,letterSpacing:C.ls,marginBottom:16,boxSizing:"border-box" }}/>
+            <div style={{ display:"flex",gap:8 }}>
+              <button onClick={()=>setAddModal(false)} style={{ flex:1,padding:"11px",borderRadius:C.rsm,fontSize:12,fontWeight:700,cursor:"pointer",background:C.card2,color:C.ink,border:`1px solid ${C.border}`,fontFamily:C.font,letterSpacing:C.ls }}>취소</button>
+              <button onClick={handleAddItem} style={{ flex:2,padding:"11px",borderRadius:C.rsm,fontSize:12,fontWeight:700,cursor:"pointer",background:C.ink,color:C.lime,border:"none",fontFamily:C.font,letterSpacing:C.ls }}>추가</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 // ── 예산 탭 ───────────────────────────────────────────────────
-function BudgetTab({ budget, onUpdate }) {
+function BudgetTab({ budget, onUpdate, onAdd, onDelete }) {
   const [editingId, setEditingId] = useState(null);
   const [editVal, setEditVal] = useState("");
-  const categories = [...new Set(budget.map(b=>b.category))];
+  const [addModal, setAddModal] = useState(false);
+  const [newLabel, setNewLabel] = useState("");
+  const [newCat, setNewCat] = useState("예식장");
+  const [newEst, setNewEst] = useState("");
+
+  const ALL_CATS = ["예식장","스드메","예물·예단","본식","뷰티","청첩장","신혼여행","이사","기타"];
+  // 예식장을 항상 첫 번째로 노출
+  const orderedCats = ["예식장", ...([...new Set(budget.map(b=>b.category))].filter(c=>c!=="예식장"))];
+  const categories = orderedCats.filter(cat=>
+    budget.some(b=>b.category===cat) || cat==="예식장"
+  );
+
   const totalEst = budget.reduce((s,b)=>s+b.estimated,0);
   const totalAct = budget.reduce((s,b)=>s+(b.paid?(b.actual??b.estimated):0),0);
   const pctPaid = totalEst===0 ? 0 : (totalAct/totalEst)*100;
+
+  const handleAdd = () => {
+    const label = newLabel.trim();
+    if(!label) return;
+    onAdd({ id:"budg_"+Date.now(), category:newCat, label, estimated:Number(newEst)||0, actual:null, paid:false });
+    setNewLabel(""); setNewEst(""); setAddModal(false);
+  };
 
   return (
     <div>
@@ -455,14 +517,18 @@ function BudgetTab({ budget, onUpdate }) {
         const cc = CAT_COLORS[cat]||"#9CA3AF";
         return (
           <div key={cat}>
-            <p style={{ fontSize:10,fontWeight:700,color:"#888",letterSpacing:C.ls,margin:"12px 0 8px",display:"flex",alignItems:"center",gap:6 }}>
-              <span style={{ width:8,height:8,borderRadius:"50%",background:cc,display:"inline-block" }}/>
-              {cat}
-            </p>
+            <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",margin:"14px 0 8px" }}>
+              <p style={{ fontSize:10,fontWeight:700,color:"#888",letterSpacing:C.ls,margin:0,display:"flex",alignItems:"center",gap:6 }}>
+                <span style={{ width:8,height:8,borderRadius:"50%",background:cc,display:"inline-block" }}/>
+                {cat}
+              </p>
+              {items.length===0 && cat==="예식장" && (
+                <span style={{ fontSize:10,color:"#bbb",letterSpacing:C.ls }}>아래 + 버튼으로 추가해보세요</span>
+              )}
+            </div>
             {items.map(item=>(
-              <div key={item.id} style={{ display:"flex",alignItems:"center",gap:10,background:item.paid?"#F8FFE0":C.card,borderRadius:C.rsm,padding:"10px 12px",border:`1px solid ${item.paid?C.limeD:C.border}`,marginBottom:7,cursor:"pointer",transition:"all 0.15s" }}
-                onClick={()=>onUpdate(item.id,"paid",!item.paid)}>
-                <div style={{ width:20,height:20,borderRadius:6,border:`1.5px solid ${item.paid?C.ink:"#C0BBAC"}`,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:800,background:item.paid?C.ink:C.card,color:item.paid?C.lime:"transparent",transition:"all 0.2s" }}>
+              <div key={item.id} style={{ display:"flex",alignItems:"center",gap:10,background:item.paid?"#F8FFE0":C.card,borderRadius:C.rsm,padding:"10px 12px",border:`1px solid ${item.paid?C.limeD:C.border}`,marginBottom:7,transition:"all 0.15s" }}>
+                <div onClick={()=>onUpdate(item.id,"paid",!item.paid)} style={{ width:20,height:20,borderRadius:6,border:`1.5px solid ${item.paid?C.ink:"#C0BBAC"}`,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:800,background:item.paid?C.ink:C.card,color:item.paid?C.lime:"transparent",transition:"all 0.2s",cursor:"pointer" }}>
                   {item.paid?"✓":""}
                 </div>
                 <div style={{ flex:1,minWidth:0 }}>
@@ -470,30 +536,84 @@ function BudgetTab({ budget, onUpdate }) {
                   <p style={{ margin:"2px 0 0",fontSize:10,color:"#999",letterSpacing:C.ls }}>예상 {item.estimated.toLocaleString()}만원</p>
                 </div>
                 {editingId===item.id ? (
-                  <div onClick={e=>e.stopPropagation()} style={{ display:"flex",gap:6 }}>
+                  <div style={{ display:"flex",gap:6 }}>
                     <input type="number" value={editVal} onChange={e=>setEditVal(e.target.value)}
-                      style={{ width:72,padding:"4px 8px",borderRadius:C.rxs,border:`1px solid ${C.border}`,fontSize:12,textAlign:"right",outline:"none",fontFamily:C.font,color:C.ink,background:C.card }}/>
+                      style={{ width:68,padding:"4px 8px",borderRadius:C.rxs,border:`1px solid ${C.border}`,fontSize:12,textAlign:"right",outline:"none",fontFamily:C.font,color:C.ink,background:C.card }}/>
                     <button onClick={()=>{onUpdate(item.id,"actual",Number(editVal)||null);setEditingId(null);}}
                       style={{ padding:"4px 10px",background:C.ink,color:C.lime,border:"none",borderRadius:C.rxs,fontSize:11,cursor:"pointer",fontWeight:700,fontFamily:C.font }}>저장</button>
                   </div>
                 ) : (
-                  <button onClick={e=>{e.stopPropagation();setEditingId(item.id);setEditVal(item.actual??"");}}
-                    style={{ background:"none",border:`1px solid ${C.border}`,borderRadius:C.rxs,padding:"3px 10px",fontSize:11,color:item.actual?C.limeD:"#bbb",cursor:"pointer",fontWeight:item.actual?700:400,whiteSpace:"nowrap",fontFamily:C.font,letterSpacing:C.ls }}>
-                    {item.actual?`${item.actual.toLocaleString()}만원`:"금액 입력"}
-                  </button>
+                  <div style={{ display:"flex",alignItems:"center",gap:6 }}>
+                    <button onClick={e=>{e.stopPropagation();setEditingId(item.id);setEditVal(item.actual??"");}}
+                      style={{ background:"none",border:`1px solid ${C.border}`,borderRadius:C.rxs,padding:"3px 9px",fontSize:11,color:item.actual?C.limeD:"#bbb",cursor:"pointer",fontWeight:item.actual?700:400,whiteSpace:"nowrap",fontFamily:C.font,letterSpacing:C.ls }}>
+                      {item.actual?`${item.actual.toLocaleString()}만원`:"금액 입력"}
+                    </button>
+                    {item.id.startsWith("budg_") && (
+                      <button onClick={()=>onDelete(item.id)} style={{ background:"none",border:"none",fontSize:14,cursor:"pointer",color:"#ccc",lineHeight:1,padding:"0 2px",flexShrink:0 }}>✕</button>
+                    )}
+                  </div>
                 )}
               </div>
             ))}
           </div>
         );
       })}
+
+      {/* 항목 추가 버튼 */}
+      <button onClick={()=>setAddModal(true)} style={{ width:"100%",marginTop:8,padding:"11px",borderRadius:C.rsm,border:`1.5px dashed rgba(0,0,0,0.15)`,background:"transparent",fontSize:12,fontWeight:700,color:C.ink,cursor:"pointer",fontFamily:C.font,letterSpacing:C.ls }}>
+        + 예산 항목 추가
+      </button>
+
+      {/* 추가 모달 */}
+      {addModal && (
+        <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:200,display:"flex",alignItems:"flex-end",justifyContent:"center" }}>
+          <div style={{ background:C.card,borderRadius:`${C.rxl} ${C.rxl} 0 0`,padding:"22px 18px 36px",width:"100%",maxWidth:480 }}>
+            <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16 }}>
+              <p style={{ margin:0,fontSize:15,fontWeight:800,color:C.ink,letterSpacing:C.ls }}>예산 항목 추가</p>
+              <button onClick={()=>setAddModal(false)} style={{ background:"none",border:"none",fontSize:18,cursor:"pointer",color:"#bbb" }}>✕</button>
+            </div>
+            <p style={{ fontSize:11,color:"#999",marginBottom:6,letterSpacing:C.ls }}>카테고리</p>
+            <div style={{ display:"flex",flexWrap:"wrap",gap:6,marginBottom:14 }}>
+              {ALL_CATS.map(c=>(
+                <button key={c} onClick={()=>setNewCat(c)} style={{ padding:"5px 12px",borderRadius:C.rsm,fontSize:11,fontWeight:600,cursor:"pointer",background:newCat===c?C.ink:C.card2,color:newCat===c?C.lime:C.ink,border:`1.5px solid ${newCat===c?C.ink:"rgba(0,0,0,0.12)"}`,fontFamily:C.font,letterSpacing:C.ls }}>
+                  {c}
+                </button>
+              ))}
+            </div>
+            <p style={{ fontSize:11,color:"#999",marginBottom:6,letterSpacing:C.ls }}>항목명</p>
+            <input value={newLabel} onChange={e=>setNewLabel(e.target.value)} placeholder="예: 예식장 계약금"
+              style={{ width:"100%",padding:"11px 13px",borderRadius:C.rsm,border:`1.5px solid rgba(0,0,0,0.14)`,fontSize:13,outline:"none",fontFamily:C.font,color:C.ink,background:C.card2,letterSpacing:C.ls,marginBottom:12,boxSizing:"border-box" }}/>
+            <p style={{ fontSize:11,color:"#999",marginBottom:6,letterSpacing:C.ls }}>예상 금액 (만원)</p>
+            <input type="number" value={newEst} onChange={e=>setNewEst(e.target.value)} placeholder="예: 300"
+              style={{ width:"100%",padding:"11px 13px",borderRadius:C.rsm,border:`1.5px solid rgba(0,0,0,0.14)`,fontSize:13,outline:"none",fontFamily:C.font,color:C.ink,background:C.card2,letterSpacing:C.ls,marginBottom:16,boxSizing:"border-box" }}/>
+            <div style={{ display:"flex",gap:8 }}>
+              <button onClick={()=>setAddModal(false)} style={{ flex:1,padding:"11px",borderRadius:C.rsm,fontSize:12,fontWeight:700,cursor:"pointer",background:C.card2,color:C.ink,border:`1px solid ${C.border}`,fontFamily:C.font,letterSpacing:C.ls }}>취소</button>
+              <button onClick={handleAdd} style={{ flex:2,padding:"11px",borderRadius:C.rsm,fontSize:12,fontWeight:700,cursor:"pointer",background:C.ink,color:C.lime,border:"none",fontFamily:C.font,letterSpacing:C.ls }}>추가</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 // ── 타임라인 탭 ───────────────────────────────────────────────
-function TimelineTab({ timeline, onToggle }) {
+function TimelineTab({ timeline, onToggle, onAdd, onDelete }) {
+  const [addModal, setAddModal] = useState(false);
+  const [newLabel, setNewLabel] = useState("");
+  const [newPhase, setNewPhase] = useState("1단계");
+  const [newDeadline, setNewDeadline] = useState("");
+
+  const PHASES = ["1단계","2단계","3단계","4단계","5단계","6단계","7단계","귀국 후"];
   const phases = [...new Set(timeline.map(t=>t.phase))];
+
+  const handleAdd = () => {
+    const label = newLabel.trim();
+    if(!label||!newDeadline) return;
+    onAdd({ id:"tl_"+Date.now(), phase:newPhase, label, deadline:newDeadline, done:false });
+    setNewLabel(""); setNewDeadline(""); setAddModal(false);
+  };
+
   return (
     <div>
       {phases.map(phase=>{
@@ -517,18 +637,21 @@ function TimelineTab({ timeline, onToggle }) {
                 const overdue = !item.done && days<0;
                 const urgent = !item.done && days>=0 && days<=30;
                 return (
-                  <div key={item.id} onClick={()=>onToggle(item.id)} style={{ display:"flex",alignItems:"center",gap:9,background:item.done?C.card2:C.card,borderRadius:C.rsm,padding:"10px 12px",border:`1px solid ${item.done?"rgba(0,0,0,0.05)":C.border}`,cursor:"pointer",opacity:item.done?0.5:1,transition:"all 0.15s" }}>
-                    <div style={{ width:18,height:18,borderRadius:"50%",border:`1.5px solid ${item.done?"#22C55E":"#C0BBAC"}`,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,background:item.done?"#22C55E":C.card,color:"#fff",transition:"all 0.2s" }}>
+                  <div key={item.id} style={{ display:"flex",alignItems:"center",gap:9,background:item.done?C.card2:C.card,borderRadius:C.rsm,padding:"10px 12px",border:`1px solid ${item.done?"rgba(0,0,0,0.05)":C.border}`,opacity:item.done?0.5:1,transition:"all 0.15s" }}>
+                    <div onClick={()=>onToggle(item.id)} style={{ width:18,height:18,borderRadius:"50%",border:`1.5px solid ${item.done?"#22C55E":"#C0BBAC"}`,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,background:item.done?"#22C55E":C.card,color:"#fff",transition:"all 0.2s",cursor:"pointer" }}>
                       {item.done?"✓":""}
                     </div>
-                    <div style={{ flex:1 }}>
-                      <p style={{ margin:0,fontSize:12,fontWeight:500,color:item.done?"#aaa":C.ink,textDecoration:item.done?"line-through":"none",letterSpacing:C.ls }}>{item.label}</p>
+                    <div style={{ flex:1 }} onClick={()=>onToggle(item.id)} >
+                      <p style={{ margin:0,fontSize:12,fontWeight:500,color:item.done?"#aaa":C.ink,textDecoration:item.done?"line-through":"none",letterSpacing:C.ls,cursor:"pointer" }}>{item.label}</p>
                       <p style={{ margin:"2px 0 0",fontSize:10,color:"#999",letterSpacing:C.ls }}>마감 {fmtDate(item.deadline)}</p>
                     </div>
                     {!item.done && (
                       <span style={{ fontSize:10,fontWeight:700,padding:"2px 8px",borderRadius:C.rxs,flexShrink:0,background:overdue?"#FEF2F2":urgent?"#FFFBEB":C.card2,color:overdue?"#EF4444":urgent?"#F59E0B":"#888",letterSpacing:C.ls }}>
                         {overdue?`D+${Math.abs(days)}`:days===0?"오늘":`D-${days}`}
                       </span>
+                    )}
+                    {item.id.startsWith("tl_") && (
+                      <button onClick={()=>onDelete(item.id)} style={{ background:"none",border:"none",fontSize:14,cursor:"pointer",color:"#ccc",lineHeight:1,padding:"0 2px",flexShrink:0 }}>✕</button>
                     )}
                   </div>
                 );
@@ -537,6 +660,40 @@ function TimelineTab({ timeline, onToggle }) {
           </div>
         );
       })}
+      {/* 항목 추가 버튼 */}
+      <button onClick={()=>setAddModal(true)} style={{ width:"100%",marginTop:4,padding:"11px",borderRadius:C.rsm,border:`1.5px dashed rgba(0,0,0,0.15)`,background:"transparent",fontSize:12,fontWeight:700,color:C.ink,cursor:"pointer",fontFamily:C.font,letterSpacing:C.ls }}>
+        + 타임라인 항목 추가
+      </button>
+
+      {/* 추가 모달 */}
+      {addModal && (
+        <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:200,display:"flex",alignItems:"flex-end",justifyContent:"center" }}>
+          <div style={{ background:C.card,borderRadius:`${C.rxl} ${C.rxl} 0 0`,padding:"22px 18px 36px",width:"100%",maxWidth:480 }}>
+            <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16 }}>
+              <p style={{ margin:0,fontSize:15,fontWeight:800,color:C.ink,letterSpacing:C.ls }}>타임라인 항목 추가</p>
+              <button onClick={()=>setAddModal(false)} style={{ background:"none",border:"none",fontSize:18,cursor:"pointer",color:"#bbb" }}>✕</button>
+            </div>
+            <p style={{ fontSize:11,color:"#999",marginBottom:6,letterSpacing:C.ls }}>단계</p>
+            <div style={{ display:"flex",flexWrap:"wrap",gap:6,marginBottom:14 }}>
+              {PHASES.map(p=>(
+                <button key={p} onClick={()=>setNewPhase(p)} style={{ padding:"5px 12px",borderRadius:C.rsm,fontSize:11,fontWeight:600,cursor:"pointer",background:newPhase===p?C.ink:C.card2,color:newPhase===p?C.lime:C.ink,border:`1.5px solid ${newPhase===p?C.ink:"rgba(0,0,0,0.12)"}`,fontFamily:C.font,letterSpacing:C.ls }}>
+                  {p}
+                </button>
+              ))}
+            </div>
+            <p style={{ fontSize:11,color:"#999",marginBottom:6,letterSpacing:C.ls }}>할 일</p>
+            <input value={newLabel} onChange={e=>setNewLabel(e.target.value)} placeholder="예: 스드메 업체 미팅"
+              style={{ width:"100%",padding:"11px 13px",borderRadius:C.rsm,border:`1.5px solid rgba(0,0,0,0.14)`,fontSize:13,outline:"none",fontFamily:C.font,color:C.ink,background:C.card2,letterSpacing:C.ls,marginBottom:12,boxSizing:"border-box" }}/>
+            <p style={{ fontSize:11,color:"#999",marginBottom:6,letterSpacing:C.ls }}>마감일</p>
+            <input type="date" value={newDeadline} onChange={e=>setNewDeadline(e.target.value)}
+              style={{ width:"100%",padding:"11px 13px",borderRadius:C.rsm,border:`1.5px solid rgba(0,0,0,0.14)`,fontSize:13,outline:"none",fontFamily:C.font,color:C.ink,background:C.card2,letterSpacing:C.ls,marginBottom:16,boxSizing:"border-box" }}/>
+            <div style={{ display:"flex",gap:8 }}>
+              <button onClick={()=>setAddModal(false)} style={{ flex:1,padding:"11px",borderRadius:C.rsm,fontSize:12,fontWeight:700,cursor:"pointer",background:C.card2,color:C.ink,border:`1px solid ${C.border}`,fontFamily:C.font,letterSpacing:C.ls }}>취소</button>
+              <button onClick={handleAdd} style={{ flex:2,padding:"11px",borderRadius:C.rsm,fontSize:12,fontWeight:700,cursor:"pointer",background:C.ink,color:C.lime,border:"none",fontFamily:C.font,letterSpacing:C.ls }}>추가</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -778,11 +935,29 @@ export default function App() {
   const updateDiscussion = useCallback((groupId,itemId,field,value)=>{
     setDiscussions(prev=>prev.map(g=>g.id!==groupId?g:{...g,items:g.items.map(i=>i.id!==itemId?i:{...i,[field]:value})}));
   },[]);
+  const addDiscussionItem = useCallback((groupId,item)=>{
+    setDiscussions(prev=>prev.map(g=>g.id!==groupId?g:{...g,items:[...g.items,item]}));
+  },[]);
+  const deleteDiscussionItem = useCallback((groupId,itemId)=>{
+    setDiscussions(prev=>prev.map(g=>g.id!==groupId?g:{...g,items:g.items.filter(i=>i.id!==itemId)}));
+  },[]);
   const updateBudget = useCallback((id,field,value)=>{
     setBudget(prev=>prev.map(b=>b.id!==id?b:{...b,[field]:value}));
   },[]);
+  const addBudgetItem = useCallback((item)=>{
+    setBudget(prev=>[...prev,item]);
+  },[]);
+  const deleteBudgetItem = useCallback((id)=>{
+    setBudget(prev=>prev.filter(b=>b.id!==id));
+  },[]);
   const toggleTimeline = useCallback((id)=>{
     setTimeline(prev=>prev.map(t=>t.id!==id?t:{...t,done:!t.done}));
+  },[]);
+  const addTimelineItem = useCallback((item)=>{
+    setTimeline(prev=>[...prev,item]);
+  },[]);
+  const deleteTimelineItem = useCallback((id)=>{
+    setTimeline(prev=>prev.filter(t=>t.id!==id));
   },[]);
   const addRefImage = useCallback(async(catId,img)=>{
     setRefImages(prev=>{ const next={...prev,[catId]:[...(prev[catId]||[]),img]}; saveRefImages(next); return next; });
@@ -877,9 +1052,9 @@ export default function App() {
           </div>
         )}
 
-        {tab==="discussion" && <DiscussionTab discussions={discussions} onUpdate={updateDiscussion}/>}
-        {tab==="budget"     && <BudgetTab budget={budget} onUpdate={updateBudget}/>}
-        {tab==="timeline"   && <TimelineTab timeline={timeline} onToggle={toggleTimeline}/>}
+        {tab==="discussion" && <DiscussionTab discussions={discussions} onUpdate={updateDiscussion} onAddItem={addDiscussionItem} onDeleteItem={deleteDiscussionItem}/>}
+        {tab==="budget"     && <BudgetTab budget={budget} onUpdate={updateBudget} onAdd={addBudgetItem} onDelete={deleteBudgetItem}/>}
+        {tab==="timeline"   && <TimelineTab timeline={timeline} onToggle={toggleTimeline} onAdd={addTimelineItem} onDelete={deleteTimelineItem}/>}
         {tab==="reference"  && <ReferenceTab refImages={refImages} onAddImage={addRefImage} onDeleteImage={deleteRefImage} onUpdateMemo={updateMemo}/>}
       </div>
 
