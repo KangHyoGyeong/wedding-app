@@ -1,22 +1,75 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 
-// ── Storage ───────────────────────────────────────────────────
-const STORAGE_KEY = "wedding-app-v3";
-const REF_STORAGE_KEY = "wedding-ref-v3";
+// ── Firebase 설정 ─────────────────────────────────────────────
+// ※ Firebase 콘솔에서 발급받은 값을 아래에 입력하세요
+const FB_CONFIG = {
+  apiKey:      "AIzaSyDtYIWWqIWKoSS7dW2zZUOUSLkb8yTeqr8",
+  databaseURL: "https://wedding-2027-a3ad5-default-rtdb.asia-southeast1.firebasedatabase.app",
+};
+
+// Firebase REST API helpers
+const DB_URL = FB_CONFIG.databaseURL;
+const FALLBACK_KEY   = "wedding-app-v3";
+const FALLBACK_REF   = "wedding-ref-v3";
+
+function isFirebaseReady() {
+  return !!(DB_URL && DB_URL.startsWith("https://"));
+}
+
+// GET  /path.json
+async function fbGet(path) {
+  if (!isFirebaseReady()) return null;
+  try {
+    const r = await fetch(`${DB_URL}/${path}.json`);
+    if (!r.ok) return null;
+    return await r.json();
+  } catch { return null; }
+}
+
+// PUT  /path.json  (전체 덮어쓰기)
+async function fbPut(path, data) {
+  if (!isFirebaseReady()) return;
+  try {
+    await fetch(`${DB_URL}/${path}.json`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+  } catch {}
+}
+
+// localStorage 폴백 (Firebase 미설정 시)
+function lsGet(key) {
+  try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : null; } catch { return null; }
+}
+function lsSet(key, data) {
+  try { localStorage.setItem(key, JSON.stringify(data)); } catch {}
+}
 
 async function loadData() {
-  try { const r = await window.storage.get(STORAGE_KEY); return r ? JSON.parse(r.value) : null; }
-  catch { return null; }
+  if (isFirebaseReady()) {
+    const d = await fbGet("wedding");
+    return d || null;
+  }
+  return lsGet(FALLBACK_KEY);
 }
+
 async function saveData(d) {
-  try { await window.storage.set(STORAGE_KEY, JSON.stringify(d)); } catch {}
+  if (isFirebaseReady()) { await fbPut("wedding", d); return; }
+  lsSet(FALLBACK_KEY, d);
 }
+
 async function loadRefImages() {
-  try { const r = await window.storage.get(REF_STORAGE_KEY); return r ? JSON.parse(r.value) : {}; }
-  catch { return {}; }
+  if (isFirebaseReady()) {
+    const d = await fbGet("refs");
+    return d || {};
+  }
+  return lsGet(FALLBACK_REF) || {};
 }
+
 async function saveRefImages(d) {
-  try { await window.storage.set(REF_STORAGE_KEY, JSON.stringify(d)); } catch {}
+  if (isFirebaseReady()) { await fbPut("refs", d); return; }
+  lsSet(FALLBACK_REF, d);
 }
 
 // ── 디자인 토큰 ───────────────────────────────────────────────
