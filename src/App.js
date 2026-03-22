@@ -121,7 +121,7 @@ const WEDDING_DATE = new Date("2027-07-10");
 
 const INITIAL_DISCUSSIONS = [
   { id:"date", title:"예식 기본 설정", segLabel:"📅 예식", icon:"📅", items:[
-    {id:"d0",label:"예식장 장소",type:"venue",venues:[],decided:null,status:"대기",note:""},
+    {id:"d0",label:"예식장 장소",options:[],decided:null,status:"대기",note:"",images:[]},
     {id:"d1",label:"예식 날짜 & 시간",options:["7월 초 (5~6일)","7월 중순 (12~13일)","7월 말 (19~20일)"],decided:null,status:"대기",note:""},
     {id:"d2",label:"하객 인원 규모",options:["소규모 80~100명","중규모 120~150명","대규모 200명+"],decided:null,status:"대기",note:""},
     {id:"d3",label:"예식 컨셉",options:["전통 + 모던 믹스","미니멀 웨딩","가든 하우스풍"],decided:null,status:"대기",note:""},
@@ -331,96 +331,6 @@ function SegmentControl({ items, active, onChange }) {
 }
 
 // ── 예식장 장소 카드 (직접 기입) ────────────────────────────
-function VenueCard({ item, groupId, onUpdate }) {
-  const [inputVal, setInputVal] = useState("");
-  const [editingNote, setEditingNote] = useState(false);
-  const [noteVal, setNoteVal] = useState(item.note||"");
-  const venues = item.venues||[];
-
-  const addVenue = () => {
-    const v = inputVal.trim();
-    if(!v) return;
-    const next = [...venues, { id:Date.now().toString(), name:v }];
-    onUpdate(groupId, item.id, "venues", next);
-    // 첫 번째 추가 시 자동 선택
-    if(next.length===1) onUpdate(groupId, item.id, "decided", v);
-    setInputVal("");
-  };
-  const removeVenue = (vid) => {
-    const next = venues.filter(v=>v.id!==vid);
-    onUpdate(groupId, item.id, "venues", next);
-    if(item.decided === venues.find(v=>v.id===vid)?.name) {
-      onUpdate(groupId, item.id, "decided", next.length>0?next[0].name:null);
-    }
-  };
-  const selectVenue = (name) => {
-    const newDecided = item.decided===name ? null : name;
-    onUpdate(groupId, item.id, "decided", newDecided);
-    onUpdate(groupId, item.id, "status", newDecided ? "결정완료" : "대기");
-  };
-  const saveNote = () => {
-    onUpdate(groupId, item.id, "note", noteVal.trim());
-    setEditingNote(false);
-  };
-
-  return (
-    <div style={{ background:C.card,borderRadius:C.rlg,padding:"14px",border:`1px solid ${item.decided?C.ink:C.border}`,marginBottom:0,transition:"border-color 0.2s" }}>
-      <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12 }}>
-        <p style={{ margin:0,fontSize:12,fontWeight:700,color:C.ink,letterSpacing:C.ls }}>🏛 예식장 장소</p>
-        {item.decided && <span style={{ background:C.lime,color:C.ink,fontSize:9,fontWeight:800,padding:"3px 8px",borderRadius:C.rxs,letterSpacing:C.ls }}>선택 완료</span>}
-      </div>
-
-      {/* 후보 장소 목록 */}
-      {venues.length>0 && (
-        <div style={{ display:"flex",flexDirection:"column",gap:7,marginBottom:12 }}>
-          {venues.map(v=>{
-            const sel = item.decided===v.name;
-            return (
-              <div key={v.id} style={{ display:"flex",alignItems:"center",gap:8,padding:"9px 12px",borderRadius:C.rsm,border:`1.5px solid ${sel?C.ink:"rgba(0,0,0,0.1)"}`,background:sel?C.ink:C.card2,cursor:"pointer",transition:"all 0.15s" }}
-                onClick={()=>selectVenue(v.name)}>
-                <div style={{ width:16,height:16,borderRadius:"50%",border:`2px solid ${sel?"transparent":"#C0BBAC"}`,background:sel?C.lime:"transparent",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:800,color:C.ink,transition:"all 0.2s" }}>
-                  {sel?"✓":""}
-                </div>
-                <span style={{ flex:1,fontSize:12,fontWeight:sel?700:500,color:sel?C.lime:C.ink,letterSpacing:C.ls }}>{v.name}</span>
-                <button onClick={e=>{e.stopPropagation();removeVenue(v.id);}} style={{ background:"none",border:"none",fontSize:14,cursor:"pointer",color:sel?"rgba(255,255,255,0.5)":"#ccc",lineHeight:1,padding:"0 2px" }}>✕</button>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* 입력 필드 */}
-      <div style={{ display:"flex",gap:7 }}>
-        <input
-          type="text" value={inputVal}
-          onChange={e=>setInputVal(e.target.value)}
-          onKeyDown={e=>{ if(e.key==="Enter") addVenue(); }}
-          placeholder="예식장 이름을 입력하세요"
-          style={{ flex:1,padding:"9px 12px",borderRadius:C.rsm,border:`1.5px solid rgba(0,0,0,0.13)`,fontSize:12,outline:"none",fontFamily:C.font,color:C.ink,background:C.card2,letterSpacing:C.ls }}
-        />
-        <button onClick={addVenue} style={{ padding:"9px 14px",background:C.ink,color:C.lime,border:"none",borderRadius:C.rsm,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:C.font,letterSpacing:C.ls,flexShrink:0 }}>추가</button>
-      </div>
-
-      {/* 메모 */}
-      <div style={{ marginTop:10 }}>
-        {editingNote ? (
-          <div>
-            <textarea value={noteVal} onChange={e=>setNoteVal(e.target.value)} placeholder="예식장 관련 메모 (연락처, 견적 조건 등)"
-              style={{ width:"100%",minHeight:64,borderRadius:C.rsm,border:`1.5px solid rgba(0,0,0,0.15)`,padding:"8px 12px",fontSize:12,fontFamily:C.font,resize:"none",outline:"none",background:C.card2,color:C.ink,letterSpacing:C.ls,lineHeight:1.5,boxSizing:"border-box" }}/>
-            <div style={{ display:"flex",gap:8,marginTop:6 }}>
-              <button onClick={saveNote} style={{ padding:"5px 14px",background:C.ink,color:C.lime,border:"none",borderRadius:C.rxs,fontSize:12,cursor:"pointer",fontWeight:700,fontFamily:C.font,letterSpacing:C.ls }}>저장</button>
-              <button onClick={()=>setEditingNote(false)} style={{ padding:"5px 14px",background:C.card2,color:C.ink,border:`1px solid ${C.border}`,borderRadius:C.rxs,fontSize:12,cursor:"pointer",fontFamily:C.font,letterSpacing:C.ls }}>취소</button>
-            </div>
-          </div>
-        ) : item.note ? (
-          <div onClick={()=>{setEditingNote(true);setNoteVal(item.note);}} style={{ background:"#F8FAF0",borderRadius:C.rxs,padding:"7px 11px",fontSize:12,color:"#555",cursor:"pointer",borderLeft:`3px solid ${C.limeD}`,letterSpacing:C.ls }}>📝 {item.note}</div>
-        ) : (
-          <button onClick={()=>setEditingNote(true)} style={{ background:"none",border:"none",color:"#bbb",fontSize:12,cursor:"pointer",padding:"4px 0",fontFamily:C.font,letterSpacing:C.ls }}>+ 메모 추가 (연락처, 견적 등)</button>
-        )}
-      </div>
-    </div>
-  );
-}
 
 // ── 의논 탭 ───────────────────────────────────────────────────
 
@@ -639,7 +549,6 @@ function DiscussionTab({ discussions, onUpdate, onAddItem, onDeleteItem }) {
       <SegmentControl items={segItems} active={activeGroup} onChange={id=>{setActiveGroup(id);setDetailItem(null);}}/>
       <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
         {group.items.map(item=>{
-          if(item.type==="venue") return <VenueCard key={item.id} item={item} groupId={group.id} onUpdate={onUpdate}/>;
           const st  = item.status||"대기";
           const cfg = STATUS_CONFIG[st];
           // 카드에 표시할 요약값
