@@ -423,105 +423,258 @@ function VenueCard({ item, groupId, onUpdate }) {
 }
 
 // ── 의논 탭 ───────────────────────────────────────────────────
-function DiscussionTab({ discussions, onUpdate, onAddItem, onDeleteItem }) {
-  const [activeGroup, setActiveGroup] = useState(discussions[0].id);
-  const [editingNote, setEditingNote] = useState(null);
-  const [noteVal, setNoteVal] = useState("");
-  const [addModal, setAddModal] = useState(false);
-  const [newLabel, setNewLabel] = useState("");
-  const [newOpts, setNewOpts] = useState("");
-  const group = discussions.find(g=>g.id===activeGroup);
-  const segItems = discussions.map(g=>({ id:g.id, label:g.segLabel }));
 
-  const handleAddItem = () => {
-    const label = newLabel.trim();
-    if(!label) return;
-    const options = newOpts.split(",").map(s=>s.trim()).filter(Boolean);
-    const id = "custom_"+Date.now();
-    onAddItem(activeGroup, {id, label, options, decided:null, status:"대기", note:""});
-    setNewLabel(""); setNewOpts(""); setAddModal(false);
+// 상세 페이지
+function DiscussionDetail({ item, groupId, onUpdate, onDelete, onBack }) {
+  const [noteVal, setNoteVal]       = useState(item.note||"");
+  const [editingNote, setEditNote]  = useState(!item.note);
+  const [labelVal, setLabelVal]     = useState(item.label);
+  const [optsVal, setOptsVal]       = useState((item.options||[]).join(", "));
+  const [editingMeta, setEditMeta]  = useState(false);
+  const [imgUploading, setImgUp]    = useState(false);
+  const fileRef                     = useRef(null);
+  const st = item.status||"대기";
+  const cfg = STATUS_CONFIG[st];
+
+  const saveNote = () => {
+    onUpdate(groupId, item.id, "note", noteVal.trim());
+    setEditNote(false);
+  };
+  const saveMeta = () => {
+    const label = labelVal.trim(); if(!label) return;
+    const options = optsVal.split(",").map(s=>s.trim()).filter(Boolean);
+    onUpdate(groupId, item.id, "label",   label);
+    onUpdate(groupId, item.id, "options", options);
+    setEditMeta(false);
+  };
+  const handleImg = async(e) => {
+    const files = Array.from(e.target.files).filter(f=>f.type.startsWith("image/"));
+    if(!files.length) return;
+    setImgUp(true);
+    try {
+      for(const file of files){
+        let src = await readFileAsDataURL(file);
+        if(file.size>2*1024*1024) src = await resizeImage(src,1200);
+        const imgs = [...(item.images||[]), {id:Date.now()+Math.random().toString(36).slice(2), src}];
+        onUpdate(groupId, item.id, "images", imgs);
+      }
+    } finally { setImgUp(false); e.target.value=""; }
+  };
+  const deleteImg = (imgId) => {
+    onUpdate(groupId, item.id, "images", (item.images||[]).filter(i=>i.id!==imgId));
   };
 
   return (
     <div>
-      <SegmentControl items={segItems} active={activeGroup} onChange={setActiveGroup}/>
-      <div style={{ display:"flex",flexDirection:"column",gap:10 }}>
-        {group.items.map(item=>(
-          item.type==="venue"
-          ? <VenueCard key={item.id} item={item} groupId={group.id} onUpdate={onUpdate}/>
-          : <div key={item.id} style={{ background:C.card,borderRadius:C.rlg,padding:"14px",border:`1px solid ${item.status==="결정완료"?C.ink:item.status==="보류"?"#F59E0B":C.border}`,transition:"border-color 0.2s" }}>
-            {/* 헤더: 제목 + 상태 배지 + 삭제 */}
-            <div style={{ display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10 }}>
-              <p style={{ margin:0,fontSize:12,fontWeight:700,color:C.ink,letterSpacing:C.ls,flex:1,minWidth:0,paddingRight:8,lineHeight:1.4 }}>{item.label}</p>
-              <div style={{ display:"flex",alignItems:"center",gap:6,flexShrink:0 }}>
-                {item.id.startsWith("custom_") && (
-                  <button onClick={()=>onDeleteItem(group.id,item.id)} style={{ background:"none",border:"none",fontSize:14,cursor:"pointer",color:"#ccc",lineHeight:1,padding:"0 2px" }}>✕</button>
-                )}
-              </div>
+      {/* 뒤로 + 삭제 */}
+      <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16 }}>
+        <button onClick={onBack} style={{ display:"flex",alignItems:"center",gap:6,background:"none",border:"none",cursor:"pointer",fontSize:13,fontWeight:700,color:C.ink,fontFamily:C.font,letterSpacing:C.ls,padding:0 }}>
+          ← 목록으로
+        </button>
+        <button onClick={()=>{ if(window.confirm("삭제할까요?")) { onDelete(groupId,item.id); onBack(); }}} style={{ background:"none",border:"none",fontSize:12,color:"#ccc",cursor:"pointer",fontFamily:C.font,letterSpacing:C.ls }}>삭제</button>
+      </div>
+
+      {/* 제목 + 수정 */}
+      <div style={{ background:C.card,borderRadius:C.rlg,padding:"16px",marginBottom:10,border:`1px solid ${C.border}` }}>
+        {editingMeta ? (
+          <div>
+            <p style={{ fontSize:11,color:"#999",marginBottom:5,letterSpacing:C.ls }}>항목명</p>
+            <input value={labelVal} onChange={e=>setLabelVal(e.target.value)}
+              style={{ width:"100%",padding:"10px 12px",borderRadius:C.rsm,border:`1.5px solid rgba(0,0,0,0.14)`,fontSize:13,outline:"none",fontFamily:C.font,color:C.ink,background:C.card2,letterSpacing:C.ls,marginBottom:10,boxSizing:"border-box" }}/>
+            <p style={{ fontSize:11,color:"#999",marginBottom:5,letterSpacing:C.ls }}>선택지 (쉼표 구분)</p>
+            <input value={optsVal} onChange={e=>setOptsVal(e.target.value)} placeholder="예: 선택지1, 선택지2"
+              style={{ width:"100%",padding:"10px 12px",borderRadius:C.rsm,border:`1.5px solid rgba(0,0,0,0.14)`,fontSize:13,outline:"none",fontFamily:C.font,color:C.ink,background:C.card2,letterSpacing:C.ls,marginBottom:12,boxSizing:"border-box" }}/>
+            <div style={{ display:"flex",gap:8 }}>
+              <button onClick={()=>setEditMeta(false)} style={{ flex:1,padding:"9px",borderRadius:C.rsm,fontSize:12,fontWeight:700,cursor:"pointer",background:C.card2,color:C.ink,border:`1px solid ${C.border}`,fontFamily:C.font }}>취소</button>
+              <button onClick={saveMeta} style={{ flex:2,padding:"9px",borderRadius:C.rsm,fontSize:12,fontWeight:700,cursor:"pointer",background:C.ink,color:C.lime,border:"none",fontFamily:C.font }}>저장</button>
             </div>
-            {/* 상태 선택 버튼 3종 */}
-            <div style={{ display:"flex",gap:6,marginBottom:item.options&&item.options.length>0?10:0 }}>
-              {["대기","보류","결정완료"].map(st=>{
-                const cfg = STATUS_CONFIG[st];
-                const active = (item.status||"대기")===st;
-                return (
-                  <button key={st} onClick={()=>onUpdate(group.id,item.id,"status",st)} style={{
-                    flex:1,padding:"6px 0",borderRadius:C.rxs,fontSize:11,fontWeight:active?800:600,
-                    cursor:"pointer",letterSpacing:C.ls,fontFamily:C.font,transition:"all 0.15s",
-                    background:active?cfg.bg:"transparent",
-                    color:active?cfg.color:"#bbb",
-                    border:`1.5px solid ${active?cfg.border:"rgba(0,0,0,0.08)"}`,
-                  }}>
-                    {active && st==="결정완료" && <span style={{marginRight:3}}>✓</span>}
-                    {active && st==="보류" && <span style={{marginRight:3}}>⏸</span>}
-                    {st}
-                  </button>
-                );
-              })}
-            </div>
-            {/* 선택지 (결정완료 상태일 때 선택 가능) */}
-            {item.options&&item.options.length>0 && (
-              <div style={{ display:"flex",flexWrap:"wrap",gap:6 }}>
-                {item.options.map(opt=>{
-                  const sel = item.decided===opt;
-                  return (
-                    <button key={opt} onClick={()=>onUpdate(group.id,item.id,"decided",sel?null:opt)} style={{
-                      padding:"5px 12px",borderRadius:C.rsm,fontSize:11,fontWeight:sel?700:500,
-                      cursor:"pointer",background:sel?C.ink:C.card2,color:sel?C.lime:C.ink,
-                      border:`1.5px solid ${sel?C.ink:"rgba(0,0,0,0.10)"}`,
-                      fontFamily:C.font,transition:"all 0.15s",letterSpacing:C.ls,
-                      opacity:item.status==="대기"?0.45:1,
-                    }}>
-                      {sel && <span style={{marginRight:4}}>✓</span>}{opt}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-            {editingNote===item.id ? (
-              <div style={{ marginTop:10 }}>
-                <textarea value={noteVal} onChange={e=>setNoteVal(e.target.value)} placeholder="메모를 입력하세요..."
-                  style={{ width:"100%",minHeight:60,borderRadius:C.rsm,border:`1.5px solid rgba(0,0,0,0.15)`,padding:"8px 12px",fontSize:12,resize:"vertical",fontFamily:C.font,boxSizing:"border-box",outline:"none",color:C.ink,background:C.card2,letterSpacing:C.ls }}/>
-                <div style={{ display:"flex",gap:8,marginTop:6 }}>
-                  <button onClick={()=>{onUpdate(group.id,item.id,"note",noteVal);setEditingNote(null);}} style={{ padding:"5px 14px",background:C.ink,color:C.lime,border:"none",borderRadius:C.rxs,fontSize:12,cursor:"pointer",fontWeight:700,fontFamily:C.font,letterSpacing:C.ls }}>저장</button>
-                  <button onClick={()=>setEditingNote(null)} style={{ padding:"5px 14px",background:C.card2,color:C.ink,border:`1px solid ${C.border}`,borderRadius:C.rxs,fontSize:12,cursor:"pointer",fontFamily:C.font,letterSpacing:C.ls }}>취소</button>
-                </div>
-              </div>
-            ) : (
-              <div>
-                {item.note ? (
-                  <div onClick={()=>{setEditingNote(item.id);setNoteVal(item.note);}} style={{ background:"#F8FAF0",borderRadius:C.rxs,padding:"7px 11px",fontSize:12,color:"#555",cursor:"pointer",borderLeft:`3px solid ${C.limeD}`,marginTop:10,letterSpacing:C.ls }}>📝 {item.note}</div>
-                ) : (
-                  <button onClick={()=>{setEditingNote(item.id);setNoteVal("");}} style={{ background:"none",border:"none",color:"#bbb",fontSize:12,cursor:"pointer",padding:"4px 0",marginTop:6,fontFamily:C.font,letterSpacing:C.ls }}>+ 메모 추가</button>
-                )}
-              </div>
-            )}
           </div>
-        ))}
+        ) : (
+          <div style={{ display:"flex",justifyContent:"space-between",alignItems:"flex-start" }}>
+            <p style={{ margin:0,fontSize:15,fontWeight:800,color:C.ink,letterSpacing:C.ls,flex:1,lineHeight:1.4 }}>{item.label}</p>
+            <button onClick={()=>setEditMeta(true)} style={{ background:"none",border:`1px solid ${C.border}`,borderRadius:C.rxs,padding:"4px 10px",fontSize:11,color:C.ink,cursor:"pointer",fontFamily:C.font,letterSpacing:C.ls,flexShrink:0,marginLeft:8 }}>수정</button>
+          </div>
+        )}
+      </div>
+
+      {/* 상태 */}
+      <div style={{ background:C.card,borderRadius:C.rlg,padding:"14px 16px",marginBottom:10,border:`1px solid ${C.border}` }}>
+        <p style={{ fontSize:10,fontWeight:700,color:"#999",letterSpacing:C.ls,marginBottom:10 }}>상태</p>
+        <div style={{ display:"flex",gap:7 }}>
+          {["대기","보류","결정완료"].map(s=>{
+            const c = STATUS_CONFIG[s]; const active = st===s;
+            return (
+              <button key={s} onClick={()=>onUpdate(groupId,item.id,"status",s)} style={{
+                flex:1,padding:"8px 0",borderRadius:C.rsm,fontSize:12,fontWeight:active?800:600,
+                cursor:"pointer",fontFamily:C.font,letterSpacing:C.ls,transition:"all 0.15s",
+                background:active?c.bg:"transparent",color:active?c.color:"#ccc",
+                border:`1.5px solid ${active?c.border:"rgba(0,0,0,0.08)"}`,
+              }}>
+                {s==="결정완료"&&active?"✓ 결정완료":s==="보류"&&active?"⏸ 보류":s}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* 선택지 */}
+      {item.options&&item.options.length>0 && (
+        <div style={{ background:C.card,borderRadius:C.rlg,padding:"14px 16px",marginBottom:10,border:`1px solid ${C.border}` }}>
+          <p style={{ fontSize:10,fontWeight:700,color:"#999",letterSpacing:C.ls,marginBottom:10 }}>선택지</p>
+          <div style={{ display:"flex",flexWrap:"wrap",gap:7 }}>
+            {item.options.map(opt=>{
+              const sel = item.decided===opt;
+              return (
+                <button key={opt} onClick={()=>onUpdate(groupId,item.id,"decided",sel?null:opt)} style={{
+                  padding:"7px 14px",borderRadius:C.rsm,fontSize:12,fontWeight:sel?700:500,
+                  cursor:"pointer",background:sel?C.ink:C.card2,color:sel?C.lime:C.ink,
+                  border:`1.5px solid ${sel?C.ink:"rgba(0,0,0,0.10)"}`,
+                  fontFamily:C.font,transition:"all 0.15s",letterSpacing:C.ls,
+                }}>
+                  {sel&&"✓ "}{opt}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* 메모 */}
+      <div style={{ background:C.card,borderRadius:C.rlg,padding:"14px 16px",marginBottom:10,border:`1px solid ${C.border}` }}>
+        <p style={{ fontSize:10,fontWeight:700,color:"#999",letterSpacing:C.ls,marginBottom:10 }}>메모</p>
+        {editingNote ? (
+          <div>
+            <textarea value={noteVal} onChange={e=>setNoteVal(e.target.value)} placeholder="메모를 입력하세요..."
+              style={{ width:"100%",minHeight:80,borderRadius:C.rsm,border:`1.5px solid rgba(0,0,0,0.13)`,padding:"10px 12px",fontSize:12,resize:"vertical",fontFamily:C.font,boxSizing:"border-box",outline:"none",color:C.ink,background:C.card2,letterSpacing:C.ls,lineHeight:1.6 }}/>
+            <div style={{ display:"flex",gap:8,marginTop:8 }}>
+              <button onClick={()=>setEditNote(false)} style={{ flex:1,padding:"8px",borderRadius:C.rsm,fontSize:12,fontWeight:700,cursor:"pointer",background:C.card2,color:C.ink,border:`1px solid ${C.border}`,fontFamily:C.font }}>취소</button>
+              <button onClick={saveNote} style={{ flex:2,padding:"8px",borderRadius:C.rsm,fontSize:12,fontWeight:700,cursor:"pointer",background:C.ink,color:C.lime,border:"none",fontFamily:C.font }}>저장</button>
+            </div>
+          </div>
+        ) : item.note ? (
+          <div style={{ display:"flex",gap:8,alignItems:"flex-start" }}>
+            <p style={{ flex:1,margin:0,fontSize:12,color:"#444",lineHeight:1.6,letterSpacing:C.ls }}>{item.note}</p>
+            <button onClick={()=>setEditNote(true)} style={{ background:"none",border:`1px solid ${C.border}`,borderRadius:C.rxs,padding:"3px 9px",fontSize:11,color:C.ink,cursor:"pointer",fontFamily:C.font,flexShrink:0 }}>수정</button>
+          </div>
+        ) : (
+          <button onClick={()=>setEditNote(true)} style={{ background:"none",border:"none",color:"#bbb",fontSize:12,cursor:"pointer",fontFamily:C.font,letterSpacing:C.ls,padding:0 }}>+ 메모 추가</button>
+        )}
+      </div>
+
+      {/* 이미지 */}
+      <div style={{ background:C.card,borderRadius:C.rlg,padding:"14px 16px",marginBottom:10,border:`1px solid ${C.border}` }}>
+        <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10 }}>
+          <p style={{ fontSize:10,fontWeight:700,color:"#999",letterSpacing:C.ls,margin:0 }}>이미지</p>
+          <input ref={fileRef} type="file" accept="image/*" multiple onChange={handleImg} style={{ display:"none" }}/>
+          <button onClick={()=>fileRef.current?.click()} disabled={imgUploading} style={{ background:"none",border:`1px solid ${C.border}`,borderRadius:C.rxs,padding:"3px 10px",fontSize:11,color:C.ink,cursor:"pointer",fontFamily:C.font,letterSpacing:C.ls }}>
+            {imgUploading?"업로드 중...":"+ 추가"}
+          </button>
+        </div>
+        {(item.images||[]).length===0 ? (
+          <p style={{ fontSize:12,color:"#bbb",letterSpacing:C.ls }}>이미지를 추가해보세요</p>
+        ) : (
+          <div style={{ display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:6 }}>
+            {(item.images||[]).map(img=>(
+              <div key={img.id} style={{ position:"relative",aspectRatio:"1",borderRadius:C.rxs,overflow:"hidden",border:`1px solid ${C.border}` }}>
+                <img src={img.src} alt="" style={{ width:"100%",height:"100%",objectFit:"cover",display:"block" }}/>
+                <button onClick={()=>deleteImg(img.id)} style={{ position:"absolute",top:4,right:4,width:20,height:20,borderRadius:"50%",background:"rgba(0,0,0,0.55)",color:"#fff",border:"none",fontSize:11,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",lineHeight:1 }}>✕</button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// 목록 탭
+function DiscussionTab({ discussions, onUpdate, onAddItem, onDeleteItem }) {
+  const [activeGroup, setActiveGroup] = useState(discussions[0].id);
+  const [detailItem,  setDetailItem]  = useState(null); // {item, groupId}
+  const [addModal,    setAddModal]    = useState(false);
+  const [newLabel,    setNewLabel]    = useState("");
+  const [newOpts,     setNewOpts]     = useState("");
+  const group    = discussions.find(g=>g.id===activeGroup);
+  const segItems = discussions.map(g=>({ id:g.id, label:g.segLabel }));
+
+  // 상세 열기 시 최신 item 반영
+  const openDetail = (item) => setDetailItem({ item, groupId:activeGroup });
+  const closeDetail = () => setDetailItem(null);
+
+  // 상세에서 onUpdate 시 detailItem도 동기화
+  const handleUpdate = (groupId, itemId, field, value) => {
+    onUpdate(groupId, itemId, field, value);
+    if(detailItem && detailItem.item.id===itemId){
+      setDetailItem(prev=>({ ...prev, item:{ ...prev.item, [field]:value } }));
+    }
+  };
+
+  const handleAddItem = () => {
+    const label = newLabel.trim(); if(!label) return;
+    const options = newOpts.split(",").map(s=>s.trim()).filter(Boolean);
+    const id = "custom_"+Date.now();
+    onAddItem(activeGroup, {id, label, options, decided:null, status:"대기", note:"", images:[]});
+    setNewLabel(""); setNewOpts(""); setAddModal(false);
+  };
+
+  // 상세 페이지
+  if(detailItem){
+    // discussions에서 최신 item 가져오기
+    const latestGroup = discussions.find(g=>g.id===detailItem.groupId);
+    const latestItem  = latestGroup?.items.find(i=>i.id===detailItem.item.id) || detailItem.item;
+    return (
+      <DiscussionDetail
+        item={latestItem}
+        groupId={detailItem.groupId}
+        onUpdate={handleUpdate}
+        onDelete={onDeleteItem}
+        onBack={closeDetail}
+      />
+    );
+  }
+
+  // 목록 페이지
+  return (
+    <div>
+      <SegmentControl items={segItems} active={activeGroup} onChange={id=>{setActiveGroup(id);setDetailItem(null);}}/>
+      <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
+        {group.items.map(item=>{
+          if(item.type==="venue") return <VenueCard key={item.id} item={item} groupId={group.id} onUpdate={onUpdate}/>;
+          const st  = item.status||"대기";
+          const cfg = STATUS_CONFIG[st];
+          // 카드에 표시할 요약값
+          const summary = item.decided
+            ? item.decided
+            : item.note
+              ? item.note.slice(0,28)+(item.note.length>28?"…":"")
+              : null;
+          return (
+            <div key={item.id} onClick={()=>openDetail(item)}
+              style={{ background:C.card,borderRadius:C.rlg,padding:"13px 15px",border:`1px solid ${C.border}`,cursor:"pointer",transition:"all 0.15s",display:"flex",alignItems:"center",gap:12 }}>
+              {/* 상태 도트 */}
+              <div style={{ width:8,height:8,borderRadius:"50%",flexShrink:0,background:cfg.border==="rgba(0,0,0,0.10)"?"#D1D5DB":cfg.border }}/>
+              <div style={{ flex:1,minWidth:0 }}>
+                <p style={{ margin:0,fontSize:13,fontWeight:600,color:C.ink,letterSpacing:C.ls }}>{item.label}</p>
+                {summary && <p style={{ margin:"3px 0 0",fontSize:11,color:C.textSub||"#6B7280",letterSpacing:C.ls,overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis" }}>{summary}</p>}
+              </div>
+              <div style={{ display:"flex",alignItems:"center",gap:8,flexShrink:0 }}>
+                {/* 상태 배지 */}
+                <span style={{ fontSize:10,fontWeight:700,padding:"3px 8px",borderRadius:C.rxs,letterSpacing:C.ls,background:cfg.bg,color:st==="대기"?"#9CA3AF":cfg.color,border:`1px solid ${cfg.border}` }}>
+                  {st}
+                </span>
+                {/* 이미지 수 */}
+                {(item.images||[]).length>0 && (
+                  <span style={{ fontSize:10,color:"#bbb",letterSpacing:C.ls }}>🖼 {item.images.length}</span>
+                )}
+                <span style={{ fontSize:16,color:"#D1D5DB" }}>›</span>
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       {/* 항목 추가 버튼 */}
-      <button onClick={()=>setAddModal(true)} style={{ width:"100%",marginTop:4,padding:"11px",borderRadius:C.rsm,border:`1.5px dashed rgba(0,0,0,0.15)`,background:"transparent",fontSize:12,fontWeight:700,color:C.ink,cursor:"pointer",fontFamily:C.font,letterSpacing:C.ls }}>
+      <button onClick={()=>setAddModal(true)} style={{ width:"100%",marginTop:10,padding:"11px",borderRadius:C.rsm,border:`1.5px dashed rgba(0,0,0,0.15)`,background:"transparent",fontSize:12,fontWeight:700,color:C.ink,cursor:"pointer",fontFamily:C.font,letterSpacing:C.ls }}>
         + 의논 항목 추가
       </button>
 
@@ -533,10 +686,10 @@ function DiscussionTab({ discussions, onUpdate, onAddItem, onDeleteItem }) {
               <p style={{ margin:0,fontSize:15,fontWeight:800,color:C.ink,letterSpacing:C.ls }}>의논 항목 추가</p>
               <button onClick={()=>setAddModal(false)} style={{ background:"none",border:"none",fontSize:18,cursor:"pointer",color:"#bbb" }}>✕</button>
             </div>
-            <p style={{ fontSize:11,color:"#999",marginBottom:6,letterSpacing:C.ls }}>질문 / 항목명</p>
+            <p style={{ fontSize:11,color:"#999",marginBottom:6,letterSpacing:C.ls }}>항목명</p>
             <input value={newLabel} onChange={e=>setNewLabel(e.target.value)} placeholder="예: 웨딩홀 선택 기준"
               style={{ width:"100%",padding:"11px 13px",borderRadius:C.rsm,border:`1.5px solid rgba(0,0,0,0.14)`,fontSize:13,outline:"none",fontFamily:C.font,color:C.ink,background:C.card2,letterSpacing:C.ls,marginBottom:12,boxSizing:"border-box" }}/>
-            <p style={{ fontSize:11,color:"#999",marginBottom:6,letterSpacing:C.ls }}>선택지 (쉼표로 구분, 없으면 비워두세요)</p>
+            <p style={{ fontSize:11,color:"#999",marginBottom:6,letterSpacing:C.ls }}>선택지 (쉼표 구분, 없으면 비워두세요)</p>
             <input value={newOpts} onChange={e=>setNewOpts(e.target.value)} placeholder="예: A홀, B홀, 미정"
               style={{ width:"100%",padding:"11px 13px",borderRadius:C.rsm,border:`1.5px solid rgba(0,0,0,0.14)`,fontSize:13,outline:"none",fontFamily:C.font,color:C.ink,background:C.card2,letterSpacing:C.ls,marginBottom:16,boxSizing:"border-box" }}/>
             <div style={{ display:"flex",gap:8 }}>
@@ -549,7 +702,6 @@ function DiscussionTab({ discussions, onUpdate, onAddItem, onDeleteItem }) {
     </div>
   );
 }
-
 // ── 예산 탭 ───────────────────────────────────────────────────
 function BudgetTab({ budget, onUpdate, onAdd, onDelete }) {
   const [editingId, setEditingId] = useState(null);
