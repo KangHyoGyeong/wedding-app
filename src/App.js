@@ -92,6 +92,13 @@ const C = {
   rxl:      "26px",
 };
 
+// ── 의논 상태 ────────────────────────────────────────────────
+const STATUS_CONFIG = {
+  "대기":     { label:"대기",     bg:"#F0EDE5", color:"#9CA3AF", border:"rgba(0,0,0,0.10)" },
+  "보류":     { label:"보류",     bg:"#FFFBEB", color:"#D97706", border:"#F59E0B" },
+  "결정완료": { label:"결정완료", bg:C.lime,    color:C.ink,     border:C.limeD  },
+};
+
 const CAT_COLORS = {
   "예식장":"#1E6FD9","스드메":"#7C3AED","예물·예단":"#DB2777",
   "본식":"#0891B2","뷰티":"#EC4899","청첩장":"#D97706",
@@ -114,48 +121,48 @@ const WEDDING_DATE = new Date("2027-07-10");
 
 const INITIAL_DISCUSSIONS = [
   { id:"date", title:"예식 기본 설정", segLabel:"📅 예식", icon:"📅", items:[
-    {id:"d0",label:"예식장 장소",type:"venue",venues:[],decided:null,note:""},
-    {id:"d1",label:"예식 날짜 & 시간",options:["7월 초 (5~6일)","7월 중순 (12~13일)","7월 말 (19~20일)"],decided:null,note:""},
-    {id:"d2",label:"하객 인원 규모",options:["소규모 80~100명","중규모 120~150명","대규모 200명+"],decided:null,note:""},
-    {id:"d3",label:"예식 컨셉",options:["전통 + 모던 믹스","미니멀 웨딩","가든 하우스풍"],decided:null,note:""},
-    {id:"d4",label:"주례 여부",options:["주례 있음","주례 없음 (자유 식순)","미정"],decided:null,note:""},
+    {id:"d0",label:"예식장 장소",type:"venue",venues:[],decided:null,status:"대기",note:""},
+    {id:"d1",label:"예식 날짜 & 시간",options:["7월 초 (5~6일)","7월 중순 (12~13일)","7월 말 (19~20일)"],decided:null,status:"대기",note:""},
+    {id:"d2",label:"하객 인원 규모",options:["소규모 80~100명","중규모 120~150명","대규모 200명+"],decided:null,status:"대기",note:""},
+    {id:"d3",label:"예식 컨셉",options:["전통 + 모던 믹스","미니멀 웨딩","가든 하우스풍"],decided:null,status:"대기",note:""},
+    {id:"d4",label:"주례 여부",options:["주례 있음","주례 없음 (자유 식순)","미정"],decided:null,status:"대기",note:""},
   ]},
   { id:"ring", title:"예물 & 예단", segLabel:"💍 예물", icon:"💍", items:[
-    {id:"r1",label:"커플링 브랜드",options:["까르띠에","불가리","티파니","국내 브랜드"],decided:null,note:""},
-    {id:"r2",label:"신부 예물",options:["커플링만","다이아 반지 별도","세트 구성"],decided:null,note:""},
-    {id:"r3",label:"신랑 예물",options:["시계","반지","없음"],decided:null,note:""},
-    {id:"r4",label:"예단 규모",options:["간소하게 (50만원 이하)","일반적 (100~200만원)","양가 협의 후"],decided:null,note:""},
-    {id:"r5",label:"예단 전달 방식",options:["함 보내기","직접 방문 전달","생략"],decided:null,note:""},
+    {id:"r1",label:"커플링 브랜드",options:["까르띠에","불가리","티파니","국내 브랜드"],decided:null,status:"대기",note:""},
+    {id:"r2",label:"신부 예물",options:["커플링만","다이아 반지 별도","세트 구성"],decided:null,status:"대기",note:""},
+    {id:"r3",label:"신랑 예물",options:["시계","반지","없음"],decided:null,status:"대기",note:""},
+    {id:"r4",label:"예단 규모",options:["간소하게 (50만원 이하)","일반적 (100~200만원)","양가 협의 후"],decided:null,status:"대기",note:""},
+    {id:"r5",label:"예단 전달 방식",options:["함 보내기","직접 방문 전달","생략"],decided:null,status:"대기",note:""},
   ]},
   { id:"house", title:"신혼집", segLabel:"🏠 집", icon:"🏠", items:[
-    {id:"h1",label:"주거 형태",options:["매매","전세","월세"],decided:null,note:""},
-    {id:"h2",label:"선호 지역 기준",options:["직장 접근성 우선","양가 중간 거리","학군 우선"],decided:null,note:""},
-    {id:"h3",label:"혼수 가전 범위",options:["필수 가전만","필수 + 선택 가전","풀 세트"],decided:null,note:""},
+    {id:"h1",label:"주거 형태",options:["매매","전세","월세"],decided:null,status:"대기",note:""},
+    {id:"h2",label:"선호 지역 기준",options:["직장 접근성 우선","양가 중간 거리","학군 우선"],decided:null,status:"대기",note:""},
+    {id:"h3",label:"혼수 가전 범위",options:["필수 가전만","필수 + 선택 가전","풀 세트"],decided:null,status:"대기",note:""},
   ]},
   { id:"honeymoon", title:"신혼여행", segLabel:"✈️ 여행", icon:"✈️", items:[
-    {id:"t1",label:"목적지",options:["유럽 (500만원+)","몰디브/발리 (350~500만원)","일본 (150~250만원)","하와이 (400만원+)"],decided:null,note:""},
-    {id:"t2",label:"기간",options:["5박 7일","7박 9일","그 이상"],decided:null,note:""},
-    {id:"t3",label:"여행 스타일",options:["럭셔리 리조트","도시 관광","자연/액티비티"],decided:null,note:""},
+    {id:"t1",label:"목적지",options:["유럽 (500만원+)","몰디브/발리 (350~500만원)","일본 (150~250만원)","하와이 (400만원+)"],decided:null,status:"대기",note:""},
+    {id:"t2",label:"기간",options:["5박 7일","7박 9일","그 이상"],decided:null,status:"대기",note:""},
+    {id:"t3",label:"여행 스타일",options:["럭셔리 리조트","도시 관광","자연/액티비티"],decided:null,status:"대기",note:""},
   ]},
   { id:"sdme", title:"스드메 & 본식", segLabel:"📸 스드메", icon:"📸", items:[
-    {id:"s1",label:"스튜디오 촬영",options:["실내 스튜디오만","야외 촬영 포함","두 곳 모두"],decided:null,note:""},
-    {id:"s2",label:"드레스 수량",options:["1벌","2벌 (본식 + 피로연)","3벌 이상"],decided:null,note:""},
-    {id:"s3",label:"신랑 예복",options:["수트","턱시도","미정"],decided:null,note:""},
-    {id:"s4",label:"사회자",options:["웨딩홀 전담 MC","지인","미정"],decided:null,note:""},
-    {id:"s5",label:"축가",options:["지인","전문 가수","없음"],decided:null,note:""},
+    {id:"s1",label:"스튜디오 촬영",options:["실내 스튜디오만","야외 촬영 포함","두 곳 모두"],decided:null,status:"대기",note:""},
+    {id:"s2",label:"드레스 수량",options:["1벌","2벌 (본식 + 피로연)","3벌 이상"],decided:null,status:"대기",note:""},
+    {id:"s3",label:"신랑 예복",options:["수트","턱시도","미정"],decided:null,status:"대기",note:""},
+    {id:"s4",label:"사회자",options:["웨딩홀 전담 MC","지인","미정"],decided:null,status:"대기",note:""},
+    {id:"s5",label:"축가",options:["지인","전문 가수","없음"],decided:null,status:"대기",note:""},
   ]},
   { id:"budget", title:"예산 분담", segLabel:"💰 예산", icon:"💰", items:[
-    {id:"b1",label:"예식장 비용 부담",options:["남자 측","여자 측","반반","양가 협의"],decided:null,note:""},
-    {id:"b2",label:"스드메 비용 부담",options:["신부 측","신랑 측","공동 부담"],decided:null,note:""},
-    {id:"b3",label:"신혼집 보증금 부담",options:["남자 측","반반","각자 비율 협의"],decided:null,note:""},
-    {id:"b4",label:"혼수 부담",options:["신부 측","신랑 측","공동 부담"],decided:null,note:""},
+    {id:"b1",label:"예식장 비용 부담",options:["남자 측","여자 측","반반","양가 협의"],decided:null,status:"대기",note:""},
+    {id:"b2",label:"스드메 비용 부담",options:["신부 측","신랑 측","공동 부담"],decided:null,status:"대기",note:""},
+    {id:"b3",label:"신혼집 보증금 부담",options:["남자 측","반반","각자 비율 협의"],decided:null,status:"대기",note:""},
+    {id:"b4",label:"혼수 부담",options:["신부 측","신랑 측","공동 부담"],decided:null,status:"대기",note:""},
   ]},
   { id:"family", title:"양가 의례", segLabel:"👨‍👩‍👧 의례", icon:"👨‍👩‍👧", items:[
-    {id:"f1",label:"상견례 장소",options:["고급 한식당","프라이빗 룸 레스토랑","호텔 식당"],decided:null,note:""},
-    {id:"f2",label:"상견례 비용 부담",options:["남자 측","반반","여자 측"],decided:null,note:""},
-    {id:"f3",label:"폐백 진행 여부",options:["진행","생략","간소화"],decided:null,note:""},
-    {id:"f4",label:"함 보내기",options:["진행","생략"],decided:null,note:""},
-    {id:"f5",label:"혼인신고 시기",options:["예식 전","예식 당일","예식 후"],decided:null,note:""},
+    {id:"f1",label:"상견례 장소",options:["고급 한식당","프라이빗 룸 레스토랑","호텔 식당"],decided:null,status:"대기",note:""},
+    {id:"f2",label:"상견례 비용 부담",options:["남자 측","반반","여자 측"],decided:null,status:"대기",note:""},
+    {id:"f3",label:"폐백 진행 여부",options:["진행","생략","간소화"],decided:null,status:"대기",note:""},
+    {id:"f4",label:"함 보내기",options:["진행","생략"],decided:null,status:"대기",note:""},
+    {id:"f5",label:"혼인신고 시기",options:["예식 전","예식 당일","예식 후"],decided:null,status:"대기",note:""},
   ]},
 ];
 
@@ -265,7 +272,7 @@ function DdayCard({ weddingDate }) {
 // ── 진행률 카드 (홈) ──────────────────────────────────────────
 function ProgressCard({ discussions, timeline }) {
   const totalD = discussions.reduce((s,g)=>s+g.items.length,0);
-  const doneD  = discussions.reduce((s,g)=>s+g.items.filter(i=>i.decided!==null).length,0);
+  const doneD  = discussions.reduce((s,g)=>s+g.items.filter(i=>i.status==="결정완료").length,0);
   const doneTl = timeline.filter(t=>t.done).length;
   const totalTl = timeline.length;
   const pctD = totalD===0 ? 0 : Math.round((doneD/totalD)*100);
@@ -347,7 +354,9 @@ function VenueCard({ item, groupId, onUpdate }) {
     }
   };
   const selectVenue = (name) => {
-    onUpdate(groupId, item.id, "decided", item.decided===name?null:name);
+    const newDecided = item.decided===name ? null : name;
+    onUpdate(groupId, item.id, "decided", newDecided);
+    onUpdate(groupId, item.id, "status", newDecided ? "결정완료" : "대기");
   };
   const saveNote = () => {
     onUpdate(groupId, item.id, "note", noteVal.trim());
@@ -429,7 +438,7 @@ function DiscussionTab({ discussions, onUpdate, onAddItem, onDeleteItem }) {
     if(!label) return;
     const options = newOpts.split(",").map(s=>s.trim()).filter(Boolean);
     const id = "custom_"+Date.now();
-    onAddItem(activeGroup, {id, label, options, decided:null, note:""});
+    onAddItem(activeGroup, {id, label, options, decided:null, status:"대기", note:""});
     setNewLabel(""); setNewOpts(""); setAddModal(false);
   };
 
@@ -440,33 +449,55 @@ function DiscussionTab({ discussions, onUpdate, onAddItem, onDeleteItem }) {
         {group.items.map(item=>(
           item.type==="venue"
           ? <VenueCard key={item.id} item={item} groupId={group.id} onUpdate={onUpdate}/>
-          : <div key={item.id} style={{ background:C.card,borderRadius:C.rlg,padding:"14px",border:`1px solid ${item.decided!==null?C.ink:C.border}`,transition:"border-color 0.2s" }}>
-            <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:9 }}>
-              <p style={{ margin:0,fontSize:12,fontWeight:700,color:C.ink,letterSpacing:C.ls,flex:1,minWidth:0,paddingRight:6 }}>{item.label}</p>
+          : <div key={item.id} style={{ background:C.card,borderRadius:C.rlg,padding:"14px",border:`1px solid ${item.status==="결정완료"?C.ink:item.status==="보류"?"#F59E0B":C.border}`,transition:"border-color 0.2s" }}>
+            {/* 헤더: 제목 + 상태 배지 + 삭제 */}
+            <div style={{ display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10 }}>
+              <p style={{ margin:0,fontSize:12,fontWeight:700,color:C.ink,letterSpacing:C.ls,flex:1,minWidth:0,paddingRight:8,lineHeight:1.4 }}>{item.label}</p>
               <div style={{ display:"flex",alignItems:"center",gap:6,flexShrink:0 }}>
-                {item.decided!==null && (
-                  <span style={{ background:C.lime,color:C.ink,fontSize:9,fontWeight:800,padding:"3px 8px",borderRadius:C.rxs,letterSpacing:C.ls }}>결정 완료</span>
-                )}
                 {item.id.startsWith("custom_") && (
                   <button onClick={()=>onDeleteItem(group.id,item.id)} style={{ background:"none",border:"none",fontSize:14,cursor:"pointer",color:"#ccc",lineHeight:1,padding:"0 2px" }}>✕</button>
                 )}
               </div>
             </div>
-            <div style={{ display:"flex",flexWrap:"wrap",gap:6 }}>
-              {item.options.map(opt=>{
-                const sel = item.decided===opt;
+            {/* 상태 선택 버튼 3종 */}
+            <div style={{ display:"flex",gap:6,marginBottom:item.options&&item.options.length>0?10:0 }}>
+              {["대기","보류","결정완료"].map(st=>{
+                const cfg = STATUS_CONFIG[st];
+                const active = (item.status||"대기")===st;
                 return (
-                  <button key={opt} onClick={()=>onUpdate(group.id,item.id,"decided",sel?null:opt)} style={{
-                    padding:"6px 13px",borderRadius:C.rsm,fontSize:11,fontWeight:sel?700:600,
-                    cursor:"pointer",background:sel?C.ink:C.card,color:sel?C.lime:C.ink,
-                    border:`1.5px solid ${sel?C.ink:"rgba(0,0,0,0.13)"}`,
-                    fontFamily:C.font,transition:"all 0.15s",letterSpacing:C.ls
+                  <button key={st} onClick={()=>onUpdate(group.id,item.id,"status",st)} style={{
+                    flex:1,padding:"6px 0",borderRadius:C.rxs,fontSize:11,fontWeight:active?800:600,
+                    cursor:"pointer",letterSpacing:C.ls,fontFamily:C.font,transition:"all 0.15s",
+                    background:active?cfg.bg:"transparent",
+                    color:active?cfg.color:"#bbb",
+                    border:`1.5px solid ${active?cfg.border:"rgba(0,0,0,0.08)"}`,
                   }}>
-                    {sel && <span style={{marginRight:4}}>✓</span>}{opt}
+                    {active && st==="결정완료" && <span style={{marginRight:3}}>✓</span>}
+                    {active && st==="보류" && <span style={{marginRight:3}}>⏸</span>}
+                    {st}
                   </button>
                 );
               })}
             </div>
+            {/* 선택지 (결정완료 상태일 때 선택 가능) */}
+            {item.options&&item.options.length>0 && (
+              <div style={{ display:"flex",flexWrap:"wrap",gap:6 }}>
+                {item.options.map(opt=>{
+                  const sel = item.decided===opt;
+                  return (
+                    <button key={opt} onClick={()=>onUpdate(group.id,item.id,"decided",sel?null:opt)} style={{
+                      padding:"5px 12px",borderRadius:C.rsm,fontSize:11,fontWeight:sel?700:500,
+                      cursor:"pointer",background:sel?C.ink:C.card2,color:sel?C.lime:C.ink,
+                      border:`1.5px solid ${sel?C.ink:"rgba(0,0,0,0.10)"}`,
+                      fontFamily:C.font,transition:"all 0.15s",letterSpacing:C.ls,
+                      opacity:item.status==="대기"?0.45:1,
+                    }}>
+                      {sel && <span style={{marginRight:4}}>✓</span>}{opt}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
             {editingNote===item.id ? (
               <div style={{ marginTop:10 }}>
                 <textarea value={noteVal} onChange={e=>setNoteVal(e.target.value)} placeholder="메모를 입력하세요..."
@@ -1040,7 +1071,7 @@ export default function App() {
   );
 
   const totalDiscItems = discussions.reduce((s,g)=>s+g.items.length,0);
-  const undecided = discussions.flatMap(g=>g.items.filter(i=>i.decided===null));
+  const undecided = discussions.flatMap(g=>g.items.filter(i=>(i.status||"대기")!=="결정완료"));
 
   return (
     <div style={{ maxWidth:480,margin:"0 auto",minHeight:"100vh",background:C.page,fontFamily:C.font,letterSpacing:C.ls,position:"relative",paddingBottom:82 }}>
