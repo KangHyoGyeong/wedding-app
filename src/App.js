@@ -195,8 +195,7 @@ function DdayCard({ weddingDate }) {
   const total = Math.ceil((weddingDate - new Date("2026-03-22")) / 86400000);
   const pct = Math.min(100, Math.max(0, ((total-diff)/total)*100));
   return (
-    <div style={S.cardLime}>
-      <div style={{ position:"absolute",top:"-24px",right:"-24px",width:"100px",height:"100px",borderRadius:"50%",background:"rgba(0,0,0,0.07)" }}/>
+    <div style={{ ...S.cardLime, overflow:"visible" }}>
       <p style={{ fontSize:10,fontWeight:700,color:C.ink,opacity:.5,letterSpacing:C.ls,marginBottom:4 }}>결혼까지</p>
       <div style={{ fontSize:54,fontWeight:800,color:C.ink,lineHeight:1,letterSpacing:"-0.05em" }}>{diff.toLocaleString()}</div>
       <p style={{ fontSize:11,color:C.ink,opacity:.55,marginTop:5,letterSpacing:C.ls }}>2027.07.10 · 로얄파크컨벤션</p>
@@ -582,7 +581,7 @@ function ReferenceTab({ refImages, onAddImage, onDeleteImage, onUpdateMemo }) {
     catch { return false; }
   };
 
-  // URL로 이미지 추가
+  // URL로 이미지 추가 (CORS 우회: crossOrigin 없이 로드 확인)
   const handleUrlAdd = async() => {
     const url = urlVal.trim();
     if(!url){ setUrlError("URL을 입력해주세요."); return; }
@@ -590,14 +589,15 @@ function ReferenceTab({ refImages, onAddImage, onDeleteImage, onUpdateMemo }) {
     setUrlError("");
     setUrlLoading(true);
     try {
-      // 이미지 로드 가능 여부 확인
       await new Promise((res,rej)=>{
         const img = new Image();
-        img.crossOrigin = "anonymous";
-        img.onload = res;
-        img.onerror = ()=>rej(new Error("이미지를 불러올 수 없어요.\nURL이 이미지 파일인지 확인해주세요."));
+        const timer = setTimeout(()=>{
+          img.src = "";
+          rej(new Error("로딩 시간이 초과됐어요. URL을 다시 확인해주세요."));
+        }, 10000);
+        img.onload = ()=>{ clearTimeout(timer); res(); };
+        img.onerror = ()=>{ clearTimeout(timer); rej(new Error("이미지를 불러올 수 없어요. 직접 이미지 링크(.jpg .png .webp)인지 확인해주세요.")); };
         img.src = url;
-        setTimeout(()=>rej(new Error("로딩 시간이 초과됐어요. 다른 URL을 시도해보세요.")), 8000);
       });
       const id = Date.now()+Math.random().toString(36).slice(2);
       const name = url.split("/").pop().split("?")[0]||"image";
