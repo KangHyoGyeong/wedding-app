@@ -40,7 +40,7 @@ const C = {
 };
 
 const CAT_COLORS = {
-  "예식장":"#1E6FD9","스드메":"#7C3AED","예물·예단":"#DB2777",
+  "스드메":"#7C3AED","예물·예단":"#DB2777",
   "본식":"#0891B2","뷰티":"#EC4899","청첩장":"#D97706",
   "신혼여행":"#059669","이사":"#6B7280","기타":"#9CA3AF"
 };
@@ -61,6 +61,7 @@ const WEDDING_DATE = new Date("2027-07-10");
 
 const INITIAL_DISCUSSIONS = [
   { id:"date", title:"예식 기본 설정", segLabel:"📅 예식", icon:"📅", items:[
+    {id:"d0",label:"예식장 장소",type:"venue",venues:[],decided:null,note:""},
     {id:"d1",label:"예식 날짜 & 시간",options:["7월 초 (5~6일)","7월 중순 (12~13일)","7월 말 (19~20일)"],decided:null,note:""},
     {id:"d2",label:"하객 인원 규모",options:["소규모 80~100명","중규모 120~150명","대규모 200명+"],decided:null,note:""},
     {id:"d3",label:"예식 컨셉",options:["전통 + 모던 믹스","미니멀 웨딩","가든 하우스풍"],decided:null,note:""},
@@ -106,8 +107,6 @@ const INITIAL_DISCUSSIONS = [
 ];
 
 const INITIAL_BUDGET = [
-  {id:"bg1",category:"예식장",label:"예식장 계약금",estimated:300,actual:null,paid:false},
-  {id:"bg2",category:"예식장",label:"예식장 잔금",estimated:1150,actual:null,paid:false},
   {id:"bg3",category:"스드메",label:"스드메 계약금",estimated:100,actual:null,paid:false},
   {id:"bg4",category:"스드메",label:"스튜디오 촬영 잔금",estimated:150,actual:null,paid:false},
   {id:"bg5",category:"스드메",label:"드레스 대여 잔금",estimated:80,actual:null,paid:false},
@@ -272,6 +271,96 @@ function SegmentControl({ items, active, onChange }) {
   );
 }
 
+// ── 예식장 장소 카드 (직접 기입) ────────────────────────────
+function VenueCard({ item, groupId, onUpdate }) {
+  const [inputVal, setInputVal] = useState("");
+  const [editingNote, setEditingNote] = useState(false);
+  const [noteVal, setNoteVal] = useState(item.note||"");
+  const venues = item.venues||[];
+
+  const addVenue = () => {
+    const v = inputVal.trim();
+    if(!v) return;
+    const next = [...venues, { id:Date.now().toString(), name:v }];
+    onUpdate(groupId, item.id, "venues", next);
+    // 첫 번째 추가 시 자동 선택
+    if(next.length===1) onUpdate(groupId, item.id, "decided", v);
+    setInputVal("");
+  };
+  const removeVenue = (vid) => {
+    const next = venues.filter(v=>v.id!==vid);
+    onUpdate(groupId, item.id, "venues", next);
+    if(item.decided === venues.find(v=>v.id===vid)?.name) {
+      onUpdate(groupId, item.id, "decided", next.length>0?next[0].name:null);
+    }
+  };
+  const selectVenue = (name) => {
+    onUpdate(groupId, item.id, "decided", item.decided===name?null:name);
+  };
+  const saveNote = () => {
+    onUpdate(groupId, item.id, "note", noteVal.trim());
+    setEditingNote(false);
+  };
+
+  return (
+    <div style={{ background:C.card,borderRadius:C.rlg,padding:"14px",border:`1px solid ${item.decided?C.ink:C.border}`,marginBottom:0,transition:"border-color 0.2s" }}>
+      <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12 }}>
+        <p style={{ margin:0,fontSize:12,fontWeight:700,color:C.ink,letterSpacing:C.ls }}>🏛 예식장 장소</p>
+        {item.decided && <span style={{ background:C.lime,color:C.ink,fontSize:9,fontWeight:800,padding:"3px 8px",borderRadius:C.rxs,letterSpacing:C.ls }}>선택 완료</span>}
+      </div>
+
+      {/* 후보 장소 목록 */}
+      {venues.length>0 && (
+        <div style={{ display:"flex",flexDirection:"column",gap:7,marginBottom:12 }}>
+          {venues.map(v=>{
+            const sel = item.decided===v.name;
+            return (
+              <div key={v.id} style={{ display:"flex",alignItems:"center",gap:8,padding:"9px 12px",borderRadius:C.rsm,border:`1.5px solid ${sel?C.ink:"rgba(0,0,0,0.1)"}`,background:sel?C.ink:C.card2,cursor:"pointer",transition:"all 0.15s" }}
+                onClick={()=>selectVenue(v.name)}>
+                <div style={{ width:16,height:16,borderRadius:"50%",border:`2px solid ${sel?"transparent":"#C0BBAC"}`,background:sel?C.lime:"transparent",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:800,color:C.ink,transition:"all 0.2s" }}>
+                  {sel?"✓":""}
+                </div>
+                <span style={{ flex:1,fontSize:12,fontWeight:sel?700:500,color:sel?C.lime:C.ink,letterSpacing:C.ls }}>{v.name}</span>
+                <button onClick={e=>{e.stopPropagation();removeVenue(v.id);}} style={{ background:"none",border:"none",fontSize:14,cursor:"pointer",color:sel?"rgba(255,255,255,0.5)":"#ccc",lineHeight:1,padding:"0 2px" }}>✕</button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* 입력 필드 */}
+      <div style={{ display:"flex",gap:7 }}>
+        <input
+          type="text" value={inputVal}
+          onChange={e=>setInputVal(e.target.value)}
+          onKeyDown={e=>{ if(e.key==="Enter") addVenue(); }}
+          placeholder="예식장 이름을 입력하세요"
+          style={{ flex:1,padding:"9px 12px",borderRadius:C.rsm,border:`1.5px solid rgba(0,0,0,0.13)`,fontSize:12,outline:"none",fontFamily:C.font,color:C.ink,background:C.card2,letterSpacing:C.ls }}
+        />
+        <button onClick={addVenue} style={{ padding:"9px 14px",background:C.ink,color:C.lime,border:"none",borderRadius:C.rsm,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:C.font,letterSpacing:C.ls,flexShrink:0 }}>추가</button>
+      </div>
+
+      {/* 메모 */}
+      <div style={{ marginTop:10 }}>
+        {editingNote ? (
+          <div>
+            <textarea value={noteVal} onChange={e=>setNoteVal(e.target.value)} placeholder="예식장 관련 메모 (연락처, 견적 조건 등)"
+              style={{ width:"100%",minHeight:64,borderRadius:C.rsm,border:`1.5px solid rgba(0,0,0,0.15)`,padding:"8px 12px",fontSize:12,fontFamily:C.font,resize:"none",outline:"none",background:C.card2,color:C.ink,letterSpacing:C.ls,lineHeight:1.5,boxSizing:"border-box" }}/>
+            <div style={{ display:"flex",gap:8,marginTop:6 }}>
+              <button onClick={saveNote} style={{ padding:"5px 14px",background:C.ink,color:C.lime,border:"none",borderRadius:C.rxs,fontSize:12,cursor:"pointer",fontWeight:700,fontFamily:C.font,letterSpacing:C.ls }}>저장</button>
+              <button onClick={()=>setEditingNote(false)} style={{ padding:"5px 14px",background:C.card2,color:C.ink,border:`1px solid ${C.border}`,borderRadius:C.rxs,fontSize:12,cursor:"pointer",fontFamily:C.font,letterSpacing:C.ls }}>취소</button>
+            </div>
+          </div>
+        ) : item.note ? (
+          <div onClick={()=>{setEditingNote(true);setNoteVal(item.note);}} style={{ background:"#F8FAF0",borderRadius:C.rxs,padding:"7px 11px",fontSize:12,color:"#555",cursor:"pointer",borderLeft:`3px solid ${C.limeD}`,letterSpacing:C.ls }}>📝 {item.note}</div>
+        ) : (
+          <button onClick={()=>setEditingNote(true)} style={{ background:"none",border:"none",color:"#bbb",fontSize:12,cursor:"pointer",padding:"4px 0",fontFamily:C.font,letterSpacing:C.ls }}>+ 메모 추가 (연락처, 견적 등)</button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── 의논 탭 ───────────────────────────────────────────────────
 function DiscussionTab({ discussions, onUpdate }) {
   const [activeGroup, setActiveGroup] = useState(discussions[0].id);
@@ -285,7 +374,9 @@ function DiscussionTab({ discussions, onUpdate }) {
       <SegmentControl items={segItems} active={activeGroup} onChange={setActiveGroup}/>
       <div style={{ display:"flex",flexDirection:"column",gap:10 }}>
         {group.items.map(item=>(
-          <div key={item.id} style={{ background:C.card,borderRadius:C.rlg,padding:"14px",border:`1px solid ${item.decided!==null?C.ink:C.border}`,transition:"border-color 0.2s" }}>
+          item.type==="venue"
+          ? <VenueCard key={item.id} item={item} groupId={group.id} onUpdate={onUpdate}/>
+          : <div key={item.id} style={{ background:C.card,borderRadius:C.rlg,padding:"14px",border:`1px solid ${item.decided!==null?C.ink:C.border}`,transition:"border-color 0.2s" }}>
             <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:9 }}>
               <p style={{ margin:0,fontSize:12,fontWeight:700,color:C.ink,letterSpacing:C.ls }}>{item.label}</p>
               {item.decided!==null && (
@@ -347,11 +438,11 @@ function BudgetTab({ budget, onUpdate }) {
         <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10 }}>
           <div>
             <p style={{ fontSize:10,fontWeight:700,color:"rgba(255,255,255,0.35)",letterSpacing:C.ls,marginBottom:3 }}>총 예상</p>
-            <p style={{ fontSize:26,fontWeight:800,color:"#fff",lineHeight:1.1,letterSpacing:"-0.04em" }}>{Math.round(totalEst/10000).toLocaleString()}<span style={{ fontSize:14,opacity:.4 }}>만원</span></p>
+            <p style={{ fontSize:26,fontWeight:800,color:"#fff",lineHeight:1.1,letterSpacing:"0" }}>{Math.round(totalEst/10000).toLocaleString()}<span style={{ fontSize:14,opacity:.4 }}>만원</span></p>
           </div>
           <div>
             <p style={{ fontSize:10,fontWeight:700,color:"rgba(255,255,255,0.35)",letterSpacing:C.ls,marginBottom:3 }}>납부 완료</p>
-            <p style={{ fontSize:26,fontWeight:800,color:C.lime,lineHeight:1.1,letterSpacing:"-0.04em" }}>{Math.round(totalAct/10000).toLocaleString()}<span style={{ fontSize:14,opacity:.6 }}>만원</span></p>
+            <p style={{ fontSize:26,fontWeight:800,color:C.lime,lineHeight:1.1,letterSpacing:"0" }}>{Math.round(totalAct/10000).toLocaleString()}<span style={{ fontSize:14,opacity:.6 }}>만원</span></p>
           </div>
         </div>
         <div style={{ background:"rgba(255,255,255,0.12)",borderRadius:"100px",height:4,overflow:"hidden" }}>
@@ -458,10 +549,17 @@ function ReferenceTab({ refImages, onAddImage, onDeleteImage, onUpdateMemo }) {
   const [memoModal, setMemoModal] = useState(null);
   const [memoVal, setMemoVal] = useState("");
   const [uploading, setUploading] = useState(false);
+  // URL 모달 상태
+  const [urlModal, setUrlModal] = useState(false);
+  const [urlVal, setUrlVal] = useState("");
+  const [urlError, setUrlError] = useState("");
+  const [urlLoading, setUrlLoading] = useState(false);
+
   const fileInputRef = useRef(null);
   const cat = REF_CATEGORIES.find(c=>c.id===activeCat);
   const images = refImages[activeCat]||[];
 
+  // 파일 업로드
   const handleFileChange = async(e) => {
     const files = Array.from(e.target.files).filter(f=>f.type.startsWith("image/"));
     if(!files.length) return;
@@ -478,31 +576,89 @@ function ReferenceTab({ refImages, onAddImage, onDeleteImage, onUpdateMemo }) {
     } finally { setUploading(false); e.target.value=""; }
   };
 
+  // URL 유효성 검사
+  const isValidUrl = (str) => {
+    try { const u = new URL(str); return u.protocol==="https:"||u.protocol==="http:"; }
+    catch { return false; }
+  };
+
+  // URL로 이미지 추가
+  const handleUrlAdd = async() => {
+    const url = urlVal.trim();
+    if(!url){ setUrlError("URL을 입력해주세요."); return; }
+    if(!isValidUrl(url)){ setUrlError("올바른 URL 형식이 아니에요. (http:// 또는 https://)"); return; }
+    setUrlError("");
+    setUrlLoading(true);
+    try {
+      // 이미지 로드 가능 여부 확인
+      await new Promise((res,rej)=>{
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.onload = res;
+        img.onerror = ()=>rej(new Error("이미지를 불러올 수 없어요.\nURL이 이미지 파일인지 확인해주세요."));
+        img.src = url;
+        setTimeout(()=>rej(new Error("로딩 시간이 초과됐어요. 다른 URL을 시도해보세요.")), 8000);
+      });
+      const id = Date.now()+Math.random().toString(36).slice(2);
+      const name = url.split("/").pop().split("?")[0]||"image";
+      await onAddImage(activeCat,{id,src:url,name,memo:"",addedAt:new Date().toISOString(),isUrl:true});
+      setUrlVal("");
+      setUrlModal(false);
+      setMemoModal({id,catId:activeCat,src:url});
+      setMemoVal("");
+    } catch(err) {
+      setUrlError(err.message||"이미지를 불러올 수 없어요.");
+    } finally {
+      setUrlLoading(false);
+    }
+  };
+
   const segItems = REF_CATEGORIES.map(c=>({ id:c.id, label:`${c.icon} ${c.label}` }));
+
+  // 버튼 공통 스타일
+  const addBtnBase = {
+    flex:1, padding:"11px 8px", borderRadius:C.rsm, fontSize:12, fontWeight:700,
+    cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center",
+    gap:6, fontFamily:C.font, letterSpacing:C.ls, transition:"all 0.15s", border:"1.5px solid",
+  };
 
   return (
     <div>
       <SegmentControl items={segItems} active={activeCat} onChange={setActiveCat}/>
-      <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={handleFileChange} style={{ display:"none" }}/>
-      <button onClick={()=>fileInputRef.current?.click()} disabled={uploading} style={{
-        width:"100%",padding:"12px",borderRadius:C.rmd,border:`1.5px dashed rgba(0,0,0,0.20)`,background:"transparent",fontSize:12,fontWeight:700,color:C.ink,cursor:uploading?"not-allowed":"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:7,fontFamily:C.font,marginBottom:12,letterSpacing:C.ls,transition:"all 0.15s"
-      }}>
-        {uploading?<>⏳ 업로드 중...</>:<><span style={{fontSize:18,fontWeight:300}}>+</span>{cat.icon} {cat.label} 이미지 추가</>}
-      </button>
 
+      {/* 추가 버튼 2개 */}
+      <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={handleFileChange} style={{ display:"none" }}/>
+      <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:14 }}>
+        <button onClick={()=>fileInputRef.current?.click()} disabled={uploading} style={{
+          ...addBtnBase, borderColor:"rgba(0,0,0,0.15)", background:C.card,
+          color:C.ink, cursor:uploading?"not-allowed":"pointer", opacity:uploading?0.6:1,
+        }}>
+          {uploading ? <>⏳ 업로드 중...</> : <><span style={{fontSize:16}}>📁</span>파일 업로드</>}
+        </button>
+        <button onClick={()=>{ setUrlModal(true); setUrlVal(""); setUrlError(""); }} style={{
+          ...addBtnBase, borderColor:C.ink, background:C.ink, color:C.lime,
+        }}>
+          <span style={{fontSize:16}}>🔗</span>URL로 추가
+        </button>
+      </div>
+
+      {/* 갤러리 */}
       {images.length===0 ? (
         <div style={{ textAlign:"center",padding:"40px 16px",border:`1px dashed ${C.border}`,borderRadius:C.rlg }}>
           <div style={{ fontSize:34,marginBottom:8 }}>{cat.icon}</div>
           <p style={{ fontSize:13,fontWeight:700,color:C.ink,marginBottom:3,letterSpacing:C.ls }}>{cat.label} 레퍼런스 없음</p>
-          <p style={{ fontSize:11,color:"#999",letterSpacing:C.ls }}>이미지를 추가해보세요</p>
+          <p style={{ fontSize:11,color:"#999",letterSpacing:C.ls }}>파일 업로드 또는 URL로 추가해보세요</p>
         </div>
       ) : (
         <div style={{ display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:6 }}>
           {images.map(img=>(
             <div key={img.id} style={{ borderRadius:C.rsm,overflow:"hidden",background:C.card2,cursor:"pointer",border:`1px solid ${C.border}` }}
               onClick={()=>setLightbox({...img,catId:activeCat})}>
-              <div style={{ aspectRatio:"1",overflow:"hidden" }}>
+              <div style={{ aspectRatio:"1",overflow:"hidden",position:"relative" }}>
                 <img src={img.src} alt={img.name} style={{ width:"100%",height:"100%",objectFit:"cover",display:"block" }}/>
+                {img.isUrl && (
+                  <span style={{ position:"absolute",top:4,right:4,background:"rgba(0,0,0,0.55)",color:"#fff",fontSize:9,fontWeight:700,padding:"2px 5px",borderRadius:4,letterSpacing:C.ls }}>URL</span>
+                )}
               </div>
               <div style={{ padding:"6px 8px",background:C.card,borderTop:`1px solid ${C.border}` }}>
                 {img.memo
@@ -515,9 +671,52 @@ function ReferenceTab({ refImages, onAddImage, onDeleteImage, onUpdateMemo }) {
         </div>
       )}
 
+      {/* URL 입력 모달 */}
+      {urlModal && (
+        <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.55)",zIndex:200,display:"flex",alignItems:"flex-end",justifyContent:"center" }}>
+          <div style={{ background:C.card,borderRadius:`${C.rxl} ${C.rxl} 0 0`,padding:"22px 18px 36px",width:"100%",maxWidth:480 }}>
+            <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6 }}>
+              <p style={{ fontSize:15,fontWeight:800,color:C.ink,letterSpacing:C.ls,margin:0 }}>🔗 URL로 이미지 추가</p>
+              <button onClick={()=>setUrlModal(false)} style={{ background:"none",border:"none",fontSize:18,cursor:"pointer",color:"#bbb",lineHeight:1 }}>✕</button>
+            </div>
+            <p style={{ fontSize:11,color:"#999",letterSpacing:C.ls,marginBottom:16 }}>이미지 직접 링크(jpg, png, webp 등)를 붙여넣으세요</p>
+
+            {/* URL 미리보기 */}
+            {urlVal && isValidUrl(urlVal) && (
+              <div style={{ width:"100%",aspectRatio:"16/9",overflow:"hidden",borderRadius:C.rsm,marginBottom:12,background:C.card2,border:`1px solid ${C.border}` }}>
+                <img src={urlVal} alt="" style={{ width:"100%",height:"100%",objectFit:"cover" }}
+                  onError={e=>{ e.target.style.display="none"; }}/>
+              </div>
+            )}
+
+            <input
+              type="url"
+              value={urlVal}
+              onChange={e=>{ setUrlVal(e.target.value); setUrlError(""); }}
+              onKeyDown={e=>{ if(e.key==="Enter") handleUrlAdd(); }}
+              placeholder="https://example.com/image.jpg"
+              style={{
+                width:"100%",padding:"12px 14px",borderRadius:C.rsm,fontSize:13,
+                border:`1.5px solid ${urlError?"#EF4444":"rgba(0,0,0,0.15)"}`,
+                outline:"none",fontFamily:C.font,color:C.ink,background:C.card2,
+                letterSpacing:C.ls,boxSizing:"border-box",
+              }}
+            />
+            {urlError && <p style={{ fontSize:11,color:"#EF4444",marginTop:6,letterSpacing:C.ls }}>{urlError}</p>}
+
+            <div style={{ display:"flex",gap:8,marginTop:14 }}>
+              <button onClick={()=>setUrlModal(false)} style={{ flex:1,padding:"11px",borderRadius:C.rsm,fontSize:12,fontWeight:700,cursor:"pointer",background:C.card2,color:C.ink,border:`1px solid ${C.border}`,fontFamily:C.font,letterSpacing:C.ls }}>취소</button>
+              <button onClick={handleUrlAdd} disabled={urlLoading} style={{ flex:2,padding:"11px",borderRadius:C.rsm,fontSize:12,fontWeight:700,cursor:urlLoading?"not-allowed":"pointer",background:urlLoading?C.card2:C.ink,color:urlLoading?"#bbb":C.lime,border:"none",fontFamily:C.font,letterSpacing:C.ls,transition:"all 0.15s" }}>
+                {urlLoading?"⏳ 확인 중...":"추가하기"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 메모 모달 */}
       {memoModal && (
-        <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:200,display:"flex",alignItems:"flex-end",justifyContent:"center" }}>
+        <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:250,display:"flex",alignItems:"flex-end",justifyContent:"center" }}>
           <div style={{ background:C.card,borderRadius:`${C.rxl} ${C.rxl} 0 0`,padding:"20px 18px 32px",width:"100%",maxWidth:480 }}>
             <p style={{ fontSize:14,fontWeight:800,color:C.ink,marginBottom:12,letterSpacing:C.ls }}>메모 작성</p>
             <img src={memoModal.src} alt="" style={{ width:"100%",aspectRatio:"16/9",objectFit:"cover",borderRadius:C.rsm,marginBottom:12 }}/>
@@ -525,7 +724,7 @@ function ReferenceTab({ refImages, onAddImage, onDeleteImage, onUpdateMemo }) {
               style={{ width:"100%",minHeight:72,borderRadius:C.rsm,border:`1.5px solid rgba(0,0,0,0.15)`,padding:"10px 12px",fontSize:12,fontFamily:C.font,resize:"none",outline:"none",background:C.card2,color:C.ink,letterSpacing:C.ls,lineHeight:1.5 }}/>
             <div style={{ display:"flex",gap:8,marginTop:10 }}>
               <button onClick={()=>setMemoModal(null)} style={{ flex:1,padding:"10px",borderRadius:C.rsm,fontSize:12,fontWeight:700,cursor:"pointer",background:C.card2,color:C.ink,border:`1px solid ${C.border}`,fontFamily:C.font,letterSpacing:C.ls }}>건너뛰기</button>
-              <button onClick={()=>{onUpdateMemo(memoModal.catId,memoModal.id,memoVal.trim());setMemoModal(null);}}
+              <button onClick={()=>{ onUpdateMemo(memoModal.catId,memoModal.id,memoVal.trim()); setMemoModal(null); }}
                 style={{ flex:1,padding:"10px",borderRadius:C.rsm,fontSize:12,fontWeight:700,cursor:"pointer",background:C.ink,color:C.lime,border:"none",fontFamily:C.font,letterSpacing:C.ls }}>저장</button>
             </div>
           </div>
@@ -535,18 +734,21 @@ function ReferenceTab({ refImages, onAddImage, onDeleteImage, onUpdateMemo }) {
       {/* 라이트박스 */}
       {lightbox && (
         <div style={{ position:"fixed",inset:0,background:"rgba(10,10,10,0.92)",zIndex:300,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:20 }}>
-          <img src={lightbox.src} alt="" style={{ maxWidth:"100%",maxHeight:"55%",borderRadius:C.rlg,objectFit:"contain" }}/>
-          <div style={{ background:"rgba(255,255,255,0.1)",borderRadius:C.rsm,padding:"10px 14px",marginTop:12,width:"100%",maxWidth:320 }}>
+          <img src={lightbox.src} alt="" style={{ maxWidth:"100%",maxHeight:"52%",borderRadius:C.rlg,objectFit:"contain" }}/>
+          {lightbox.isUrl && (
+            <p style={{ fontSize:10,color:"rgba(255,255,255,0.35)",marginTop:8,letterSpacing:C.ls,maxWidth:280,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{lightbox.src}</p>
+          )}
+          <div style={{ background:"rgba(255,255,255,0.1)",borderRadius:C.rsm,padding:"10px 14px",marginTop:10,width:"100%",maxWidth:320 }}>
             <p style={{ fontSize:12,color:lightbox.memo?"rgba(255,255,255,0.85)":"rgba(255,255,255,0.35)",lineHeight:1.5,letterSpacing:C.ls }}>
               {lightbox.memo||"메모를 추가해보세요"}
             </p>
           </div>
-          <div style={{ display:"flex",gap:8,marginTop:14 }}>
-            <button onClick={()=>setLightbox(null)} style={{ padding:"9px 18px",borderRadius:C.rsm,fontSize:12,fontWeight:700,cursor:"pointer",background:"rgba(255,255,255,0.14)",color:"#fff",border:"1px solid rgba(255,255,255,0.2)",fontFamily:C.font,letterSpacing:C.ls }}>닫기</button>
-            <button onClick={()=>{setMemoModal({id:lightbox.id,catId:lightbox.catId,src:lightbox.src});setMemoVal(lightbox.memo||"");setLightbox(null);}}
-              style={{ padding:"9px 18px",borderRadius:C.rsm,fontSize:12,fontWeight:700,cursor:"pointer",background:C.lime,color:C.ink,border:"none",fontFamily:C.font,letterSpacing:C.ls }}>메모 수정</button>
-            <button onClick={()=>{onDeleteImage(lightbox.catId,lightbox.id);setLightbox(null);}}
-              style={{ padding:"9px 18px",borderRadius:C.rsm,fontSize:12,fontWeight:700,cursor:"pointer",background:"#EF4444",color:"#fff",border:"none",fontFamily:C.font,letterSpacing:C.ls }}>삭제</button>
+          <div style={{ display:"flex",gap:8,marginTop:14,flexWrap:"wrap",justifyContent:"center" }}>
+            <button onClick={()=>setLightbox(null)} style={{ padding:"9px 16px",borderRadius:C.rsm,fontSize:12,fontWeight:700,cursor:"pointer",background:"rgba(255,255,255,0.14)",color:"#fff",border:"1px solid rgba(255,255,255,0.2)",fontFamily:C.font,letterSpacing:C.ls }}>닫기</button>
+            <button onClick={()=>{ setMemoModal({id:lightbox.id,catId:lightbox.catId,src:lightbox.src}); setMemoVal(lightbox.memo||""); setLightbox(null); }}
+              style={{ padding:"9px 16px",borderRadius:C.rsm,fontSize:12,fontWeight:700,cursor:"pointer",background:C.lime,color:C.ink,border:"none",fontFamily:C.font,letterSpacing:C.ls }}>메모 수정</button>
+            <button onClick={()=>{ onDeleteImage(lightbox.catId,lightbox.id); setLightbox(null); }}
+              style={{ padding:"9px 16px",borderRadius:C.rsm,fontSize:12,fontWeight:700,cursor:"pointer",background:"#EF4444",color:"#fff",border:"none",fontFamily:C.font,letterSpacing:C.ls }}>삭제</button>
           </div>
         </div>
       )}
